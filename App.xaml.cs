@@ -17,12 +17,18 @@ public partial class App : System.Windows.Application
     private TrayIconManager? _tray;
     private StartupPeepholeWindow? _startupPeephole;
     private AppSettings _settings = new();
+    private bool _demoCapture;
+    private DispatcherTimer? _demoTimer;
     private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(450) };
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        _singleInstance = new Mutex(true, @"Local\GuguPet.SingleInstance", out var createdNew);
+        _demoCapture = e.Args.Contains("--demo-capture", StringComparer.OrdinalIgnoreCase);
+        var mutexName = _demoCapture
+            ? @"Local\GuguPet.DemoCapture"
+            : @"Local\GuguPet.SingleInstance";
+        _singleInstance = new Mutex(true, mutexName, out var createdNew);
         if (!createdNew)
         {
             Shutdown();
@@ -31,7 +37,7 @@ public partial class App : System.Windows.Application
 
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
         Directory.CreateDirectory(AppPaths.DataDirectory);
-        _settings = SettingsStore.Load();
+        _settings = _demoCapture ? new AppSettings() : SettingsStore.Load();
         LocalizationService.Initialize(_settings.Language);
         _settings.StartWithWindows = StartupManager.IsEnabled();
         SynchronizeCodexStartupIntegration();
@@ -40,6 +46,8 @@ public partial class App : System.Windows.Application
 
         _petWindow = new PetWindow();
         ApplyPetSettings(_settings);
+        if (_demoCapture)
+            _petWindow.ConfigureDemoCapture();
         _statusBubble = new StatusBubbleWindow(_petWindow)
         {
             ActivityBubbleEnabled = _settings.ActivityBubbleEnabled,
@@ -88,16 +96,19 @@ public partial class App : System.Windows.Application
             _settings.AutoRoam,
             _settings.StartWithWindows);
 
-        _bridge = new BridgeStateWatcher(AppPaths.BridgeStatePath, state =>
+        if (!_demoCapture)
         {
-            Dispatcher.Invoke(() =>
+            _bridge = new BridgeStateWatcher(AppPaths.BridgeStatePath, state =>
             {
-                _petWindow.SetBaseState(state.State);
-                _controlWindow.UpdateBridgeStatus(state);
+                Dispatcher.Invoke(() =>
+                {
+                    _petWindow.SetBaseState(state.State);
+                    _controlWindow.UpdateBridgeStatus(state);
+                });
             });
-        });
+        }
 
-        if (bubblePreview is null)
+        if (bubblePreview is null && !_demoCapture)
         {
             _codexActivity = new CodexActivityWatcher(AppPaths.CodexSessionsDirectory, state =>
             {
@@ -119,9 +130,15 @@ public partial class App : System.Windows.Application
             });
         }
 
-        var showControlAfterStartup = _settings.ShowControlPanelOnLaunch ||
-                                      e.Args.Contains("--show-control", StringComparer.OrdinalIgnoreCase);
-        if (_settings.StartupAnimationEnabled &&
+        var showControlAfterStartup = !_demoCapture &&
+                                      (_settings.ShowControlPanelOnLaunch ||
+                                       e.Args.Contains("--show-control", StringComparer.OrdinalIgnoreCase));
+        if (_demoCapture)
+        {
+            ShowMainWindows(showControl: false, playWave: false);
+            StartDemoCaptureSequence();
+        }
+        else if (_settings.StartupAnimationEnabled &&
             !e.Args.Contains("--skip-startup-animation", StringComparer.OrdinalIgnoreCase))
             PlayStartupAnimation(initialLaunch: true, showControlAfter: showControlAfterStartup);
         else
@@ -129,6 +146,26 @@ public partial class App : System.Windows.Application
 
         if (bubblePreview is not null)
             ScheduleBubblePreview(bubblePreview.Split('=', 2)[1]);
+    }
+
+    private void StartDemoCaptureSequence()
+    {
+        if (_petWindow is null) return;
+        var states = new[]
+        {
+            "waving", "jumping", "thinking-star", "guitar",
+            "cookie", "celebrate-cheer", "celebrate-dance", "sleep-prone"
+        };
+        var index = 0;
+        _petWindow.PlayTransient(states[index], autoClear: false);
+        _demoTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.2) };
+        _demoTimer.Tick += (_, _) =>
+        {
+            if (_petWindow is null) return;
+            index = (index + 1) % states.Length;
+            _petWindow.PlayTransient(states[index], autoClear: false);
+        };
+        _demoTimer.Start();
     }
 
     private void PlayStartupAnimation(bool initialLaunch, bool showControlAfter)
@@ -303,6 +340,7 @@ public partial class App : System.Windows.Application
 
     private void SaveSettings()
     {
+        if (_demoCapture) return;
         if (_petWindow is null || _controlWindow is null || _statusBubble is null) return;
         _settings.Left = _petWindow.Left;
         _settings.Top = _petWindow.Top;
@@ -332,6 +370,7 @@ public partial class App : System.Windows.Application
 
     private void ExitApplication()
     {
+        _demoTimer?.Stop();
         _saveTimer.Stop();
         SaveSettings();
         _bridge?.Dispose();

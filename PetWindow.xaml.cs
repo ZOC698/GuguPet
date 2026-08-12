@@ -208,6 +208,27 @@ public partial class PetWindow : Window
         }
     }
 
+    public void ConfigureDemoCapture()
+    {
+        AllowsTransparency = false;
+        Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 250, 240));
+        ShowInTaskbar = true;
+        Width = 320;
+        Height = Width * AnimationCatalog.CellHeight / AnimationCatalog.CellWidth;
+        PetRoot.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 250, 240));
+        Topmost = false;
+        GazeEnabled = false;
+        AutoIdleActions = false;
+        AutoRoam = false;
+        ChaseFastCursor = false;
+        EdgeActionsEnabled = false;
+        ResizeGrip.Visibility = Visibility.Collapsed;
+        Left = SystemParameters.WorkArea.Left +
+               Math.Max(24, (SystemParameters.WorkArea.Width - Width) / 2);
+        Top = SystemParameters.WorkArea.Top +
+              Math.Max(24, (SystemParameters.WorkArea.Height - Height) / 2);
+    }
+
     public void RoamNow()
     {
         CancelEdgeAction();

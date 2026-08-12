@@ -1,10 +1,16 @@
-# GuguPet Desktop Companion
+# GuguPet for Codex
 
 [简体中文](README.md) | **English** | [日本語](README.ja.md)
 
-GuguPet is a native Windows WPF desktop companion powered by the existing Codex Pet v2 Gugu spritesheet. It does not modify Codex or the original Pet files.
+`GuguPet for Codex` is a native Windows WPF desktop companion powered by the existing Codex Pet v2 Gugu spritesheet. It does not modify Codex or the original Pet files.
 
 ![Gugu avatar](Assets/gugu-icon.png)
+
+## Demo
+
+[![GuguPet for Codex action demo](docs/media/gugupet-for-codex-preview.png)](docs/media/gugupet-for-codex-demo.mp4)
+
+Click the image to play a 16-second recording captured directly from the isolated Gugu window. It contains only Gugu on a solid background: no Codex session data, desktop, control panel, or other window is recorded.
 
 > This is an unofficial fan-made project and is not affiliated with or endorsed by OpenAI, Codex, Bilibili, or the original character creators.
 
@@ -82,6 +88,8 @@ Changes are hot-reloaded after the file is saved. Any local script can control t
 ```powershell
 dotnet run --project .\GuguPet.csproj
 ```
+
+Maintainers can launch `--demo-capture` for an isolated, Gugu-only recording mode. It uses a separate instance and solid background while disabling session monitoring, the state bridge, random movement, and cursor gaze; it is not part of the normal user startup flow.
 
 ## Publishing
 
