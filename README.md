@@ -1,5 +1,7 @@
 # 咕嘎独立桌宠
 
+**简体中文** | [English](README.en.md) | [日本語](README.ja.md)
+
 这是一个原生 Windows WPF 桌宠播放器，使用现有 Codex Pet v2 咕嘎图集，不修改 Codex 或原始 Pet 文件。
 
 ![咕嘎头像](Assets/gugu-icon.png)
