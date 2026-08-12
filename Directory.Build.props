@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <Version>0.9.0</Version>
+    <AssemblyVersion>0.9.0.0</AssemblyVersion>
+    <FileVersion>0.9.0.0</FileVersion>
+    <InformationalVersion>0.9.0</InformationalVersion>
+    <Product>GuguPet</Product>
+    <Company>GuguPet Contributors</Company>
+    <Authors>ZOC698</Authors>
+    <Description>GuguPet Windows desktop companion for Codex</Description>
+    <Copyright>Copyright © 2026 ZOC698</Copyright>
+    <RepositoryUrl>https://github.com/ZOC698/GuguPet</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+</Project>

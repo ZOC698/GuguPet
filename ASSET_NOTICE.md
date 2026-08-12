@@ -2,16 +2,19 @@
 
 GuguPet is an unofficial fan-made desktop pet project.
 
-The MIT license in this repository applies to the source code. It does not
-automatically grant rights to the Gugu character design, names, reference
-material, artwork, animation frames, audio, or other media assets under
-`Assets/`.
+The raster artwork and animation assets committed under `Assets/` were created
+with AI image-generation tools under the project maintainer's direction and
+then selected, edited, assembled, and adapted for this project. They are not
+frames extracted from a video or copied from another desktop-pet package.
 
-Before redistributing or commercially using those assets, contributors and
-downstream distributors are responsible for confirming that they have the
-necessary permission from the relevant rights holders. No affiliation with or
-endorsement by OpenAI, Codex, Bilibili, or the original character creators is
-claimed.
+To the extent that copyright or related rights exist in these project assets,
+they are distributed under the same [MIT License](LICENSE) as the source code.
+This makes every component maintained in this repository available under an
+OSI-approved open-source license.
+
+The license does not claim ownership of third-party names, trademarks, or
+pre-existing character concepts, and it does not imply affiliation with or
+endorsement by OpenAI, Codex, Bilibili, or any original character creator.
 
 If you are a rights holder and believe material has been included incorrectly,
 please open a repository issue so it can be reviewed promptly.

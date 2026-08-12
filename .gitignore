@@ -3,6 +3,7 @@ bin/
 obj/
 publish/
 release/
+artifacts/
 backups/
 launch-watcher/bin/
 launch-watcher/obj/
