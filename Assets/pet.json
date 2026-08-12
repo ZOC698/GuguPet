@@ -1,0 +1,7 @@
+{
+  "id": "gugu-reference",
+  "displayName": "Gugu Reference",
+  "description": "A faithful chibi penguin-suit girl based on the supplied three-view reference.",
+  "spriteVersionNumber": 2,
+  "spritesheetPath": "spritesheet.webp"
+}

@@ -1,0 +1,26 @@
+<Window x:Class="GuguPet.StartupPeepholeWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="咕嘎来找你玩"
+        Width="420" Height="560"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        UseLayoutRounding="True"
+        PreviewKeyDown="Window_OnPreviewKeyDown">
+    <Border Background="#050505"
+            CornerRadius="0"
+            ClipToBounds="True"
+            BorderThickness="0">
+        <Grid>
+            <Image x:Name="FrameA" Stretch="Fill" SnapsToDevicePixels="True"
+                   RenderOptions.BitmapScalingMode="HighQuality" />
+            <Image x:Name="FrameB" Stretch="Fill" Opacity="0" SnapsToDevicePixels="True"
+                   RenderOptions.BitmapScalingMode="HighQuality" />
+        </Grid>
+    </Border>
+</Window>

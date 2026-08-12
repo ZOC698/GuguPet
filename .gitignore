@@ -1,0 +1,28 @@
+# Build output
+bin/
+obj/
+publish/
+release/
+backups/
+launch-watcher/bin/
+launch-watcher/obj/
+
+# Runtime state
+bridge-state.json
+
+# Generated caches and local tooling
+**/__pycache__/
+*.py[cod]
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Local asset backups and previews
+Assets/*-before-*.png
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store

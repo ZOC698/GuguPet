@@ -1,0 +1,46 @@
+<Window x:Class="GuguPet.PetWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Gugu Pet"
+        Width="180" Height="195"
+        AllowsTransparency="True"
+        Background="Transparent"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        AllowDrop="True"
+        DragOver="PetWindow_OnDragOver"
+        Drop="PetWindow_OnDrop">
+    <Window.ContextMenu>
+        <ContextMenu>
+            <MenuItem Header="新建 Codex 任务" Click="NewCodexTask_OnClick" />
+            <MenuItem x:Name="RecentTask1" Visibility="Collapsed" Click="RecentCodexTask_OnClick" />
+            <MenuItem x:Name="RecentTask2" Visibility="Collapsed" Click="RecentCodexTask_OnClick" />
+            <MenuItem x:Name="RecentTask3" Visibility="Collapsed" Click="RecentCodexTask_OnClick" />
+            <Separator x:Name="RecentTasksSeparator" Visibility="Collapsed" />
+            <MenuItem Header="投喂饼干" Click="FeedCookie_OnClick" />
+            <Separator />
+            <MenuItem Header="打开咕嘎控制台" Click="OpenControls_OnClick" />
+        </ContextMenu>
+    </Window.ContextMenu>
+    <Grid Background="Transparent">
+        <Image x:Name="SpriteImage"
+               Stretch="Fill"
+               SnapsToDevicePixels="True"
+               RenderOptions.BitmapScalingMode="HighQuality" />
+        <Border x:Name="ResizeGrip"
+                Width="20" Height="20"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Background="#33000000"
+                CornerRadius="7"
+                Visibility="Collapsed"
+                Cursor="SizeNWSE"
+                MouseLeftButtonDown="ResizeGrip_OnMouseLeftButtonDown"
+                MouseMove="ResizeGrip_OnMouseMove"
+                MouseLeftButtonUp="ResizeGrip_OnMouseLeftButtonUp">
+            <TextBlock Text="↘" Foreground="White" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+    </Grid>
+</Window>

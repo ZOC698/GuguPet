@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net7.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>GuguPet</AssemblyName>
+    <RootNamespace>GuguPet</RootNamespace>
+    <ApplicationIcon>Assets\gugu.ico</ApplicationIcon>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildProjectDirectory)=/_/GuguPet</PathMap>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="launch-watcher\**\*.cs" />
+    <Resource Include="Assets\spritesheet.png" />
+    <Resource Include="Assets\idle-actions.png" />
+    <Resource Include="Assets\gugu.ico" />
+    <Resource Include="Assets\gugu-icon.png" />
+    <Resource Include="Assets\gugu-icon-cutout.png" />
+    <Resource Include="Assets\pet.json" />
+    <Resource Include="Assets\startup-peephole.png" />
+    <Content Include="Locales\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+</Project>
