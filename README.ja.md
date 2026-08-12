@@ -93,5 +93,9 @@ dotnet publish .\GuguPet.csproj -c Release -r win-x64 --self-contained true -p:P
 
 - [プライバシーに関する説明](PRIVACY.md)
 - [セキュリティポリシー](SECURITY.md)
-- ソースコードは [MIT License](LICENSE) で公開
-- キャラクターおよびアート素材は MIT ライセンスに自動的には含まれません。[Asset notice](ASSET_NOTICE.md) を参照してください
+- [アンインストール手順](UNINSTALL.md)
+- [Code signing policy](CODE_SIGNING_POLICY.md)
+- ソースコードとプロジェクト内の AI 生成アート素材は [MIT License](LICENSE) で公開
+- 素材の由来と第三者権利の範囲については [Asset notice](ASSET_NOTICE.md) を参照してください
+
+Free code signing provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/).
