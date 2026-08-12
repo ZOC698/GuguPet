@@ -1,10 +1,16 @@
-# 咕嘎独立桌宠
+# GuguPet for Codex · 咕嘎独立桌宠
 
 **简体中文** | [English](README.en.md) | [日本語](README.ja.md)
 
-这是一个原生 Windows WPF 桌宠播放器，使用现有 Codex Pet v2 咕嘎图集，不修改 Codex 或原始 Pet 文件。
+`GuguPet for Codex` 是一个原生 Windows WPF 桌宠播放器，使用现有 Codex Pet v2 咕嘎图集，不修改 Codex 或原始 Pet 文件。
 
 ![咕嘎头像](Assets/gugu-icon.png)
+
+## 演示
+
+[![GuguPet for Codex 动作演示](docs/media/gugupet-for-codex-preview.png)](docs/media/gugupet-for-codex-demo.mp4)
+
+上图可点击播放 16 秒真实运行录像。录像由隔离的演示模式直接捕获咕嘎窗口，只包含咕嘎和纯色背景；不读取 Codex 会话，也不录制桌面、控制台或其他窗口。
 
 > 非官方同人项目，与 OpenAI、Codex、哔哩哔哩及角色原作者没有隶属或背书关系。
 
@@ -82,6 +88,8 @@
 ```powershell
 dotnet run --project .\GuguPet.csproj
 ```
+
+维护者可用 `--demo-capture` 启动只展示咕嘎动作的隔离录制模式。该模式使用独立实例、纯色窗口背景，并禁用会话监听、状态桥、随机移动与鼠标注视；它不面向普通用户启动流程。
 
 ## 发布
 

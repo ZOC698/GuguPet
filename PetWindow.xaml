@@ -1,7 +1,7 @@
 <Window x:Class="GuguPet.PetWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Gugu Pet"
+        Title="GuguPet for Codex"
         Width="180" Height="195"
         AllowsTransparency="True"
         Background="Transparent"
@@ -24,7 +24,7 @@
             <MenuItem Header="打开咕嘎控制台" Click="OpenControls_OnClick" />
         </ContextMenu>
     </Window.ContextMenu>
-    <Grid Background="Transparent">
+    <Grid x:Name="PetRoot" Background="Transparent">
         <Image x:Name="SpriteImage"
                Stretch="Fill"
                SnapsToDevicePixels="True"

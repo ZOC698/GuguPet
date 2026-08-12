@@ -4,10 +4,10 @@
     <AssemblyVersion>0.9.0.0</AssemblyVersion>
     <FileVersion>0.9.0.0</FileVersion>
     <InformationalVersion>0.9.0</InformationalVersion>
-    <Product>GuguPet</Product>
+    <Product>GuguPet for Codex</Product>
     <Company>GuguPet Contributors</Company>
     <Authors>ZOC698</Authors>
-    <Description>GuguPet Windows desktop companion for Codex</Description>
+    <Description>GuguPet for Codex Windows desktop companion</Description>
     <Copyright>Copyright © 2026 ZOC698</Copyright>
     <RepositoryUrl>https://github.com/ZOC698/GuguPet</RepositoryUrl>
     <RepositoryType>git</RepositoryType>

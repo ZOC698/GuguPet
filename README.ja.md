@@ -1,10 +1,16 @@
-# 咕嘎（グーガー）デスクトップペット
+# GuguPet for Codex
 
 [简体中文](README.md) | [English](README.en.md) | **日本語**
 
-既存の Codex Pet v2 咕嘎（グーガー）スプライトシートを使用した、Windows ネイティブの WPF デスクトップペットです。Codex 本体や元の Pet ファイルは変更しません。
+`GuguPet for Codex` は既存の Codex Pet v2 咕嘎（グーガー）スプライトシートを使用した、Windows ネイティブの WPF デスクトップペットです。Codex 本体や元の Pet ファイルは変更しません。
 
 ![咕嘎のアイコン](Assets/gugu-icon.png)
+
+## デモ
+
+[![GuguPet for Codex アクションデモ](docs/media/gugupet-for-codex-preview.png)](docs/media/gugupet-for-codex-demo.mp4)
+
+画像をクリックすると、隔離された咕嘎ウィンドウを直接収録した 16 秒の動画を再生できます。映るのは単色背景上の咕嘎だけで、Codex セッション、デスクトップ、コントロールパネル、他のウィンドウは収録しません。
 
 > 非公式のファンメイドプロジェクトです。OpenAI、Codex、bilibili、およびキャラクターの原作者とは提携しておらず、公式な承認も受けていません。
 
@@ -82,6 +88,8 @@
 ```powershell
 dotnet run --project .\GuguPet.csproj
 ```
+
+メンテナーは `--demo-capture` で咕嘎だけを表示する隔離収録モードを起動できます。別インスタンスと単色背景を使用し、セッション監視、状態ブリッジ、ランダム移動、カーソル注視を無効にします。通常ユーザー向けの起動フローには含まれません。
 
 ## 発行
 
