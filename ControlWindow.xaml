@@ -344,15 +344,15 @@
                                 <DockPanel Margin="0,0,0,9">
                                     <StackPanel Orientation="Horizontal">
                                         <Ellipse Width="10" Height="10" Fill="{StaticResource Cyan}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                        <TextBlock Text="Codex 状态" Style="{StaticResource SectionTitle}" Margin="0" />
+                                        <TextBlock Text="Codex / DSH 状态" Style="{StaticResource SectionTitle}" Margin="0" />
                                     </StackPanel>
                                     <CheckBox x:Name="CodexSyncCheck" Content="自动同步" IsChecked="True" FontWeight="SemiBold" DockPanel.Dock="Right"
                                               Checked="CodexSyncCheck_OnChanged" Unchecked="CodexSyncCheck_OnChanged" />
                                 </DockPanel>
                                 <Border Background="#F0FAFB" BorderBrush="#C5E8EC" BorderThickness="1" CornerRadius="10" Padding="11">
-                                    <TextBlock x:Name="CodexStatus" Text="正在连接 Codex 状态" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="CodexStatus" Text="正在连接 Codex / DSH 状态" TextWrapping="Wrap" />
                                 </Border>
-                                <CheckBox x:Name="ActivityBubbleCheck" Content="在咕嘎旁显示实时进度气泡" IsChecked="True"
+                                <CheckBox x:Name="ActivityBubbleCheck" Content="在咕嘎旁分别显示 Codex / DSH 实时进度气泡" IsChecked="True"
                                           Checked="ActivityBubbleCheck_OnChanged" Unchecked="ActivityBubbleCheck_OnChanged" Margin="0,11,0,0" />
                                 <Grid Margin="27,7,0,10">
                                     <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="70" /></Grid.ColumnDefinitions>
@@ -368,6 +368,7 @@
                                             <Border BorderBrush="#E4DED5" BorderThickness="0,0,0,1" Padding="9">
                                                 <StackPanel>
                                                     <DockPanel LastChildFill="True">
+                                                        <TextBlock Text="{Binding SourceLabel}" FontWeight="Bold" Foreground="{StaticResource Orange}" Margin="0,0,8,0" />
                                                         <TextBlock Text="{Binding StatusLabel}" FontWeight="SemiBold" Foreground="{StaticResource Cyan}" Margin="0,0,8,0" />
                                                         <TextBlock Text="{Binding UpdatedAt, StringFormat={}{0:HH:mm:ss}}" Foreground="{StaticResource Muted}" HorizontalAlignment="Right" FontSize="10" />
                                                     </DockPanel>
@@ -380,7 +381,7 @@
                                 </ListBox>
                                 <DockPanel Margin="0,9,0,0">
                                     <Button Content="新建 Codex 任务" Click="NewCodexTask_OnClick" Style="{StaticResource PrimaryButton}" DockPanel.Dock="Right" />
-                                    <TextBlock Text="点击任务可返回 Codex" Style="{StaticResource Hint}" VerticalAlignment="Center" />
+                                    <TextBlock Text="点击任务可返回对应应用" Style="{StaticResource Hint}" VerticalAlignment="Center" />
                                 </DockPanel>
                             </StackPanel>
                         </Border>

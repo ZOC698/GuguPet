@@ -31,6 +31,29 @@ public static class CodexWindowActivator
         }
     }
 
+    internal static bool ActivateFirstVisibleProcessWindow(string processName)
+    {
+        var result = IntPtr.Zero;
+        EnumWindows((window, _) =>
+        {
+            if (!IsWindowVisible(window)) return true;
+            GetWindowThreadProcessId(window, out var processId);
+            try
+            {
+                using var process = Process.GetProcessById((int)processId);
+                if (!process.ProcessName.Equals(processName, StringComparison.OrdinalIgnoreCase))
+                    return true;
+                result = window;
+                return false;
+            }
+            catch
+            {
+                return true;
+            }
+        }, IntPtr.Zero);
+        return result != IntPtr.Zero && ActivateExistingWindow(result);
+    }
+
     private static bool ActivateExistingWindow(IntPtr window)
     {
         var foreground = GetForegroundWindow();

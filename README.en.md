@@ -33,8 +33,10 @@ The current release is not yet Authenticode-signed. Windows SmartScreen may disp
 - Codex state animations including `running`, `waiting`, `failed`, and `review`
 - Mouse gaze is a low-priority idle reaction and returns to idle after an adjustable delay
 - Read-only monitoring of `%USERPROFILE%\.codex\sessions` by default, reacting automatically to Codex start, completion, and error events
+- Automatic connection to DSH's official local event interface (preferring `127.0.0.1:5556`, with `3080` compatibility). Once connected, WebSocket events drive updates without per-second process scans or compressed-log reads
 - Safe progress summaries extracted from public `agent_message` events and shown in temporary bubbles beside Gugu
-- The control panel displays the status, title, and public progress of the eight most recent Codex tasks without reading or displaying internal reasoning
+- The control panel combines the status, title, and public progress of up to eight Codex / DSH tasks without reading or displaying internal reasoning
+- Codex and DSH have separate progress bubbles that can be visible simultaneously; clicking either bubble returns to its matching application
 - Clicking a live progress bubble restores and activates the Codex window; if Codex is not running, GuguPet attempts to launch it from the Start menu
 - Right-click to open the instant control panel
 - Adjustable size, opacity, movement speed, always-on-top mode, and reduced motion
@@ -54,7 +56,7 @@ The current release is not yet Authenticode-signed. Windows SmartScreen may disp
 
 ## State bridge
 
-“Automatically follow Codex work status” is enabled by default in the control panel. When Codex begins a task, Gugu switches to `running`; when input is requested, to `waiting`; after completion, briefly to `review`; and on an explicit error, to `failed`. This feature reads session logs only. It does not modify Codex data or read or display internal reasoning.
+“Auto sync” is enabled by default in the control panel. When Codex or DSH begins a task, Gugu switches to `running`; when input or approval is requested, to `waiting`; after completion, briefly to `review`; and on an explicit error, to `failed`. Codex integration reads session logs only. DSH integration connects only to `session.list` and two downlink event streams on the local loopback interface; it does not submit prompts, answer requests, read DSH credentials, or decode compressed logs. Neither integration reads or displays internal reasoning.
 
 “Start Gugu with Codex (no Hook)” under System Integration is disabled by default. When enabled by the user, GuguPet registers a standard per-user Windows startup entry and waits for `ChatGPT.exe` in a hidden watcher mode. Gugu appears when the Codex desktop app starts. Disabling the option removes the startup entry and stops the watcher; it does not require editing `hooks.json` or trusting a command in Codex CLI.
 

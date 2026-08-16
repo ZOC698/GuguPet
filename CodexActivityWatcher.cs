@@ -11,17 +11,26 @@ public sealed record CodexTaskSummary(
     string State,
     string StatusLabel,
     string Message,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    string Source = "codex")
+{
+    public string SourceLabel => Source.Equals("dsh", StringComparison.OrdinalIgnoreCase) ? "DSH" : "Codex";
+}
 
 public sealed record CodexActivityState(
     string State,
     string Message,
     DateTimeOffset UpdatedAt,
     string ThreadId,
-    IReadOnlyList<CodexTaskSummary> Tasks);
+    IReadOnlyList<CodexTaskSummary> Tasks,
+    string Source = "codex")
+{
+    public string SourceLabel => Source.Equals("dsh", StringComparison.OrdinalIgnoreCase) ? "DSH" : "Codex";
+}
 
 public sealed class CodexActivityWatcher : IDisposable
 {
+    private static readonly TimeSpan ReviewDisplayDuration = TimeSpan.FromSeconds(8);
     private const int TailBytes = 4 * 1024 * 1024;
     private const int TitleTailBytes = 24 * 1024 * 1024;
     private const int MaxTasks = 8;
@@ -34,7 +43,6 @@ public sealed class CodexActivityWatcher : IDisposable
     private readonly System.Threading.Timer _pollTimer;
     private readonly Dictionary<string, CachedSnapshot> _snapshotCache = new(StringComparer.OrdinalIgnoreCase);
     private string? _lastSignature;
-    private CodexActivityState? _lastPublished;
 
     public CodexActivityWatcher(string sessionsDirectory, Action<CodexActivityState> onChanged)
     {
@@ -81,23 +89,29 @@ public sealed class CodexActivityWatcher : IDisposable
                 .OrderByDescending(snapshot => snapshot.UpdatedAt)
                 .ToList();
 
-            var prioritized = snapshots
-                .OrderBy(snapshot => StatePriority(snapshot.State))
-                .ThenByDescending(snapshot => snapshot.UpdatedAt)
+            var now = DateTimeOffset.Now;
+            var tasks = snapshots.Select(snapshot =>
+                {
+                    var taskState = snapshot.State == "review" &&
+                                    now - snapshot.UpdatedAt >= ReviewDisplayDuration
+                        ? "idle"
+                        : snapshot.State;
+                    return new CodexTaskSummary(
+                        snapshot.ThreadId,
+                        snapshot.Title,
+                        taskState,
+                        StatusLabel(taskState),
+                        taskState == "idle" ? LocalizationService.T("Codex 已待命") : snapshot.Message,
+                        snapshot.UpdatedAt);
+                })
+                .OrderBy(task => StatePriority(task.State))
+                .ThenByDescending(task => task.UpdatedAt)
                 .ToList();
-
-            var tasks = prioritized.Select(snapshot => new CodexTaskSummary(
-                snapshot.ThreadId,
-                snapshot.Title,
-                snapshot.State,
-                StatusLabel(snapshot.State),
-                snapshot.Message,
-                snapshot.UpdatedAt)).ToList();
 
             // Put actionable work first: input/approval, blocked, running, then
             // recently completed and idle tasks. The bubble and task list use
             // this same order so the most important task is always first.
-            var focus = prioritized.FirstOrDefault();
+            var focus = tasks.FirstOrDefault();
             if (focus is null)
             {
                 Publish(new CodexActivityState(
@@ -105,10 +119,7 @@ public sealed class CodexActivityWatcher : IDisposable
                 return;
             }
 
-            _reviewTimer.Change(Timeout.Infinite, Timeout.Infinite);
             var focusState = focus.State;
-            if (focusState == "review" && DateTimeOffset.Now - focus.UpdatedAt > TimeSpan.FromSeconds(12))
-                focusState = "idle";
 
             var message = focusState switch
             {
@@ -121,8 +132,17 @@ public sealed class CodexActivityWatcher : IDisposable
 
             var state = new CodexActivityState(focusState, message, focus.UpdatedAt, focus.ThreadId, tasks);
             Publish(state);
-            if (focusState == "review")
-                _reviewTimer.Change(TimeSpan.FromSeconds(8), Timeout.InfiniteTimeSpan);
+            var nextReview = tasks
+                .Where(task => task.State == "review")
+                .Select(task => task.UpdatedAt + ReviewDisplayDuration)
+                .DefaultIfEmpty()
+                .Min();
+            if (nextReview == default)
+                _reviewTimer.Change(Timeout.Infinite, Timeout.Infinite);
+            else
+                _reviewTimer.Change(
+                    nextReview <= now ? TimeSpan.Zero : nextReview - now,
+                    Timeout.InfiniteTimeSpan);
         }
         catch (IOException) { QueueScan(); }
         catch (UnauthorizedAccessException) { }
@@ -316,9 +336,7 @@ public sealed class CodexActivityWatcher : IDisposable
 
     private void SettleToIdle()
     {
-        var previous = _lastPublished;
-        if (previous is null || previous.State != "review") return;
-        Publish(previous with { State = "idle", Message = LocalizationService.T("Codex 已待命"), UpdatedAt = DateTimeOffset.Now });
+        QueueScan();
     }
 
     private void Publish(CodexActivityState state)
@@ -327,7 +345,6 @@ public sealed class CodexActivityWatcher : IDisposable
                         string.Join(';', state.Tasks.Select(task => $"{task.ThreadId}:{task.State}:{task.UpdatedAt:O}:{task.Message}"));
         if (signature == _lastSignature) return;
         _lastSignature = signature;
-        _lastPublished = state;
         _onChanged(state);
     }
 

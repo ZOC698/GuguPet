@@ -15,10 +15,8 @@
     <Window.ContextMenu>
         <ContextMenu>
             <MenuItem Header="新建 Codex 任务" Click="NewCodexTask_OnClick" />
-            <MenuItem x:Name="RecentTask1" Visibility="Collapsed" Click="RecentCodexTask_OnClick" />
-            <MenuItem x:Name="RecentTask2" Visibility="Collapsed" Click="RecentCodexTask_OnClick" />
-            <MenuItem x:Name="RecentTask3" Visibility="Collapsed" Click="RecentCodexTask_OnClick" />
-            <Separator x:Name="RecentTasksSeparator" Visibility="Collapsed" />
+            <MenuItem Header="打开 DSH" Click="OpenDsh_OnClick" />
+            <Separator />
             <MenuItem Header="投喂饼干" Click="FeedCookie_OnClick" />
             <Separator />
             <MenuItem Header="打开咕嘎控制台" Click="OpenControls_OnClick" />

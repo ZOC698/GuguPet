@@ -84,7 +84,7 @@ public partial class PetWindow : Window
 
     public event EventHandler? OpenControlsRequested;
     public event EventHandler? NewCodexTaskRequested;
-    public event Action<CodexTaskSummary>? RecentCodexTaskRequested;
+    public event EventHandler? OpenDshRequested;
     public event Action<IReadOnlyList<string>>? FilesDropped;
     public event EventHandler? SettingsChanged;
     public PetWindow()
@@ -364,59 +364,6 @@ public partial class PetWindow : Window
         if (PresentationSource.FromVisual(this) is not null)
             Dispatcher.BeginInvoke(ConstrainToCurrentDisplay, DispatcherPriority.Loaded);
     }
-
-    public void UpdateRecentCodexTasks(IEnumerable<CodexTaskSummary> tasks)
-    {
-        var recent = tasks
-            .OrderByDescending(task => task.UpdatedAt)
-            .Take(3)
-            .ToArray();
-        var slots = new[] { RecentTask1, RecentTask2, RecentTask3 };
-
-        for (var index = 0; index < slots.Length; index++)
-        {
-            var slot = slots[index];
-            if (index >= recent.Length)
-            {
-                slot.Visibility = Visibility.Collapsed;
-                slot.Tag = null;
-                continue;
-            }
-
-            var task = recent[index];
-            slot.Header = $"{index + 1}. [{task.StatusLabel}] {MenuTaskTitle(task)}";
-            slot.ToolTip = $"{task.Title}\n{LocalizationService.F("更新于 {0:MM-dd HH:mm}", task.UpdatedAt)}";
-            slot.Tag = task;
-            slot.Visibility = Visibility.Visible;
-        }
-
-        RecentTasksSeparator.Visibility = recent.Length > 0
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-    }
-
-    private static string ShortenMenuTitle(string title)
-    {
-        var defaultTitle = LocalizationService.T("Codex 任务");
-        var clean = string.IsNullOrWhiteSpace(title) ? defaultTitle : title.Trim();
-        return clean.Length <= 28 ? clean : clean[..27] + "…";
-    }
-
-    private static string MenuTaskTitle(CodexTaskSummary task)
-    {
-        var defaultTitle = LocalizationService.T("Codex 任务");
-        var title = task.Title.Trim();
-        if ((title.Length == 0 || IsDefaultTaskTitle(title, defaultTitle)) &&
-            !string.IsNullOrWhiteSpace(task.Message))
-            title = task.Message.Trim();
-        if (title.Length == 0 || IsDefaultTaskTitle(title, defaultTitle))
-            title = LocalizationService.F("未命名对话 · {0:MM-dd HH:mm}", task.UpdatedAt);
-        return ShortenMenuTitle(title);
-    }
-
-    private static bool IsDefaultTaskTitle(string title, string localizedDefault) =>
-        title.Equals("Codex 任务", StringComparison.OrdinalIgnoreCase) ||
-        title.Equals(localizedDefault, StringComparison.OrdinalIgnoreCase);
 
     public void PlaceInsideWorkArea(double left, double top)
     {
@@ -795,11 +742,8 @@ public partial class PetWindow : Window
     private void NewCodexTask_OnClick(object sender, RoutedEventArgs e) =>
         NewCodexTaskRequested?.Invoke(this, EventArgs.Empty);
 
-    private void RecentCodexTask_OnClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is MenuItem { Tag: CodexTaskSummary task })
-            RecentCodexTaskRequested?.Invoke(task);
-    }
+    private void OpenDsh_OnClick(object sender, RoutedEventArgs e) =>
+        OpenDshRequested?.Invoke(this, EventArgs.Empty);
 
     private void FeedCookie_OnClick(object sender, RoutedEventArgs e) =>
         PlayTransient("cookie", autoClear: true);
