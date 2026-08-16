@@ -12,8 +12,12 @@ public partial class App : System.Windows.Application
     private PetWindow? _petWindow;
     private ControlWindow? _controlWindow;
     private StatusBubbleWindow? _statusBubble;
+    private StatusBubbleWindow? _dshStatusBubble;
     private BridgeStateWatcher? _bridge;
     private CodexActivityWatcher? _codexActivity;
+    private DshActivityWatcher? _dshActivity;
+    private CodexActivityState? _lastCodexActivity;
+    private CodexActivityState? _lastDshActivity;
     private TrayIconManager? _tray;
     private StartupPeepholeWindow? _startupPeephole;
     private AppSettings _settings = new();
@@ -48,12 +52,17 @@ public partial class App : System.Windows.Application
         ApplyPetSettings(_settings);
         if (_demoCapture)
             _petWindow.ConfigureDemoCapture();
-        _statusBubble = new StatusBubbleWindow(_petWindow)
+        _statusBubble = new StatusBubbleWindow(_petWindow, preferRight: true)
         {
             ActivityBubbleEnabled = _settings.ActivityBubbleEnabled,
             DisplaySeconds = _settings.BubbleDisplaySeconds
         };
-        _controlWindow = new ControlWindow(_petWindow, _statusBubble, _settings);
+        _dshStatusBubble = new StatusBubbleWindow(_petWindow, preferRight: false)
+        {
+            ActivityBubbleEnabled = _settings.ActivityBubbleEnabled,
+            DisplaySeconds = _settings.BubbleDisplaySeconds
+        };
+        _controlWindow = new ControlWindow(_petWindow, _statusBubble, _dshStatusBubble, _settings);
         _petWindow.OpenControlsRequested += (_, _) => _controlWindow.ShowAndActivate();
         _petWindow.NewCodexTaskRequested += (_, _) =>
         {
@@ -62,14 +71,17 @@ public partial class App : System.Windows.Application
                 LocalizationService.T("新建 Codex 任务"),
                 LocalizationService.T("Codex 已打开，请在侧边栏选择“新建任务”。"));
         };
-        _petWindow.RecentCodexTaskRequested += task =>
+        _petWindow.OpenDshRequested += (_, _) =>
         {
-            CodexWindowActivator.ActivateOrLaunch();
-            _statusBubble.ShowNotice(task.Title, LocalizationService.F("已返回 Codex · {0}", task.StatusLabel));
+            if (!DshWindowActivator.ActivateOrLaunch())
+                _dshStatusBubble.ShowNotice(
+                    LocalizationService.T("未找到 DSH 启动入口"),
+                    LocalizationService.T("请先创建桌面快捷方式“咕嘎 DSH”，或把 DSH 放在咕嘎目录中。"));
         };
         _petWindow.FilesDropped += PrepareFilesForCodex;
         _petWindow.SettingsChanged += (_, _) => QueueSave();
-        _statusBubble.ActivityRequested += (_, _) => CodexWindowActivator.ActivateOrLaunch();
+        _statusBubble.ActivityRequested += source => ActivityWindowActivator.Activate(source);
+        _dshStatusBubble.ActivityRequested += source => ActivityWindowActivator.Activate(source);
         _controlWindow.ExitRequested += (_, _) => ExitApplication();
         _controlWindow.SettingsChanged += (_, _) => QueueSave();
         _controlWindow.StartupChanged += (_, enabled) => SetStartup(enabled);
@@ -112,20 +124,22 @@ public partial class App : System.Windows.Application
         {
             _codexActivity = new CodexActivityWatcher(AppPaths.CodexSessionsDirectory, state =>
             {
-                Dispatcher.Invoke(() =>
+                Dispatcher.BeginInvoke(() =>
                 {
-                    _controlWindow.UpdateCodexStatus(state);
+                    _lastCodexActivity = state;
                     if (_petWindow.IsVisible)
                         _statusBubble.UpdateActivity(state);
-                    _petWindow.UpdateRecentCodexTasks(state.Tasks);
-                    if (_controlWindow.CodexSyncEnabled)
-                    {
-                        _petWindow.SetBaseState(state.State);
-                        if (state.State == "running")
-                            _petWindow.AcknowledgeProgress(
-                                _statusBubble.Left + _statusBubble.ActualWidth / 2,
-                                _statusBubble.Top + _statusBubble.ActualHeight / 2);
-                    }
+                    PublishMergedActivity();
+                });
+            });
+            _dshActivity = new DshActivityWatcher(state =>
+            {
+                Dispatcher.BeginInvoke(() =>
+                {
+                    _lastDshActivity = state;
+                    if (_petWindow.IsVisible)
+                        _dshStatusBubble.UpdateActivity(state);
+                    PublishMergedActivity();
                 });
             });
         }
@@ -146,6 +160,25 @@ public partial class App : System.Windows.Application
 
         if (bubblePreview is not null)
             ScheduleBubblePreview(bubblePreview.Split('=', 2)[1]);
+    }
+
+    private void PublishMergedActivity()
+    {
+        if (_petWindow is null || _controlWindow is null || _statusBubble is null || _dshStatusBubble is null) return;
+        var state = ActivityStateMerger.Merge(_lastCodexActivity, _lastDshActivity);
+        _controlWindow.UpdateCodexStatus(state);
+        if (!_controlWindow.CodexSyncEnabled) return;
+
+        _petWindow.SetBaseState(state.State);
+        if (state.State == "running")
+        {
+            var activeBubble = state.Source.Equals("dsh", StringComparison.OrdinalIgnoreCase)
+                ? _dshStatusBubble
+                : _statusBubble;
+            _petWindow.AcknowledgeProgress(
+                activeBubble.Left + activeBubble.ActualWidth / 2,
+                activeBubble.Top + activeBubble.ActualHeight / 2);
+        }
     }
 
     private void StartDemoCaptureSequence()
@@ -170,10 +203,12 @@ public partial class App : System.Windows.Application
 
     private void PlayStartupAnimation(bool initialLaunch, bool showControlAfter)
     {
-        if (_startupPeephole is not null || _petWindow is null || _controlWindow is null || _statusBubble is null)
+        if (_startupPeephole is not null || _petWindow is null || _controlWindow is null ||
+            _statusBubble is null || _dshStatusBubble is null)
             return;
 
         _statusBubble.Hide();
+        _dshStatusBubble.Hide();
         if (_petWindow.IsVisible) _petWindow.Hide();
 
         try
@@ -197,16 +232,20 @@ public partial class App : System.Windows.Application
 
     private void ShowMainWindows(bool showControl, bool playWave)
     {
-        if (_petWindow is null || _controlWindow is null || _statusBubble is null) return;
+        if (_petWindow is null || _controlWindow is null || _statusBubble is null || _dshStatusBubble is null) return;
         if (!_petWindow.IsVisible) _petWindow.Show();
         if (_statusBubble.Owner is null) _statusBubble.Owner = _petWindow;
+        if (_dshStatusBubble.Owner is null) _dshStatusBubble.Owner = _petWindow;
+        if (_lastCodexActivity is not null) _statusBubble.UpdateActivity(_lastCodexActivity);
+        if (_lastDshActivity is not null) _dshStatusBubble.UpdateActivity(_lastDshActivity);
         if (showControl) _controlWindow.ShowAndActivate();
         if (playWave) _petWindow.PlayTransient("waving", autoClear: true);
     }
 
     private void ScheduleBubblePreview(string requestedState)
     {
-        if (_statusBubble is null) return;
+        if (_statusBubble is null || _dshStatusBubble is null) return;
+        var previewBoth = requestedState.Equals("both", StringComparison.OrdinalIgnoreCase);
         var state = requestedState.ToLowerInvariant() switch
         {
             "waiting" => "waiting",
@@ -238,6 +277,25 @@ public partial class App : System.Windows.Application
                 "ui-preview", LocalizationService.T("咕嘎 UI 实机预览"), state, statusLabel, message, DateTimeOffset.Now);
             _statusBubble.UpdateActivity(new CodexActivityState(
                 state, message, DateTimeOffset.Now, task.ThreadId, new[] { task }));
+            if (!previewBoth) return;
+
+            var dshTask = new CodexTaskSummary(
+                "dsh-ui-preview",
+                LocalizationService.T("DSH 任务"),
+                "waiting",
+                LocalizationService.T("需要输入"),
+                LocalizationService.T("DSH 需要你的输入或批准"),
+                DateTimeOffset.Now,
+                "dsh");
+            _dshStatusBubble.ActivityBubbleEnabled = true;
+            _dshStatusBubble.DisplaySeconds = 30;
+            _dshStatusBubble.UpdateActivity(new CodexActivityState(
+                "waiting",
+                dshTask.Message,
+                dshTask.UpdatedAt,
+                dshTask.ThreadId,
+                new[] { dshTask },
+                "dsh"));
         };
         timer.Start();
     }
@@ -375,9 +433,11 @@ public partial class App : System.Windows.Application
         SaveSettings();
         _bridge?.Dispose();
         _codexActivity?.Dispose();
+        _dshActivity?.Dispose();
         _tray?.Dispose();
         _controlWindow?.ForceClose();
         _statusBubble?.Close();
+        _dshStatusBubble?.Close();
         _petWindow?.Close();
         _singleInstance?.ReleaseMutex();
         _singleInstance?.Dispose();

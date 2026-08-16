@@ -9,7 +9,7 @@ namespace GuguPet;
 public partial class ControlWindow : Window
 {
     private readonly PetWindow _pet;
-    private readonly StatusBubbleWindow _bubble;
+    private readonly StatusBubbleWindow[] _bubbles;
     private bool _forceClose;
     private bool _loading;
     private System.Windows.Point _cookieDragStart;
@@ -24,10 +24,14 @@ public partial class ControlWindow : Window
     public bool ShowControlPanelOnLaunch => ShowControlOnLaunchCheck.IsChecked == true;
     public string SelectedLanguage => LanguageCombo.SelectedValue as string ?? "auto";
 
-    public ControlWindow(PetWindow pet, StatusBubbleWindow bubble, AppSettings settings)
+    public ControlWindow(
+        PetWindow pet,
+        StatusBubbleWindow codexBubble,
+        StatusBubbleWindow dshBubble,
+        AppSettings settings)
     {
         _pet = pet;
-        _bubble = bubble;
+        _bubbles = new[] { codexBubble, dshBubble };
         _loading = true;
         InitializeComponent();
         LocalizationService.Apply(this);
@@ -116,10 +120,10 @@ public partial class ControlWindow : Window
 
     public void UpdateCodexStatus(CodexActivityState state)
     {
-        CodexStatus.Text = $"{StateDisplayName(state.State)} · {state.Message}\n{state.UpdatedAt:HH:mm:ss}";
+        CodexStatus.Text = $"{state.SourceLabel} · {StateDisplayName(state.State)} · {state.Message}\n{state.UpdatedAt:HH:mm:ss}";
         HeaderStatusText.Text = state.State switch
         {
-            "running" => LocalizationService.T("Codex 正在工作"),
+            "running" => LocalizationService.F("{0} 正在工作", state.SourceLabel),
             "waiting" => LocalizationService.T("等待你的确认"),
             "failed" => LocalizationService.T("任务遇到问题"),
             "review" => LocalizationService.T("任务已完成"),
@@ -248,14 +252,16 @@ public partial class ControlWindow : Window
     private void ActivityBubbleCheck_OnChanged(object sender, RoutedEventArgs e)
     {
         if (IsInitialized)
-            _bubble.ActivityBubbleEnabled = ActivityBubbleCheck.IsChecked == true;
+            foreach (var bubble in _bubbles)
+                bubble.ActivityBubbleEnabled = ActivityBubbleCheck.IsChecked == true;
         NotifySettingsChanged();
     }
 
     private void BubbleDurationSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (!IsInitialized) return;
-        _bubble.DisplaySeconds = e.NewValue;
+        foreach (var bubble in _bubbles)
+            bubble.DisplaySeconds = e.NewValue;
         BubbleDurationValue.Text = LocalizationService.F("{0:0} 秒", e.NewValue);
         NotifySettingsChanged();
     }
@@ -324,8 +330,8 @@ public partial class ControlWindow : Window
 
     private void TaskList_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        if (TaskList.SelectedItem is CodexTaskSummary)
-            CodexWindowActivator.ActivateOrLaunch();
+        if (TaskList.SelectedItem is CodexTaskSummary task)
+            ActivityWindowActivator.Activate(task.Source);
     }
 
     private void NewCodexTask_OnClick(object sender, RoutedEventArgs e) =>

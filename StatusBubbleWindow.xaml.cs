@@ -8,6 +8,7 @@ namespace GuguPet;
 public partial class StatusBubbleWindow : Window
 {
     private readonly PetWindow _pet;
+    private readonly bool _preferRight;
     private readonly DispatcherTimer _hideTimer;
     private bool _activityBubbleEnabled = true;
     private double _displaySeconds = 10;
@@ -15,13 +16,25 @@ public partial class StatusBubbleWindow : Window
     private CodexActivityState? _activity;
     private int _taskIndex;
 
-    public event EventHandler? ActivityRequested;
+    public event Action<string>? ActivityRequested;
 
-    public StatusBubbleWindow(PetWindow pet)
+    public StatusBubbleWindow(PetWindow pet, bool preferRight = true)
     {
         _pet = pet;
+        _preferRight = preferRight;
         InitializeComponent();
         LocalizationService.Apply(this);
+        Title = preferRight ? "GuguPet Codex Progress" : "GuguPet DSH Progress";
+        var dshWaveVisibility = preferRight ? Visibility.Collapsed : Visibility.Visible;
+        DshWaveTop.Visibility = dshWaveVisibility;
+        DshWaveBottom.Visibility = dshWaveVisibility;
+        DshWaveRight.Visibility = dshWaveVisibility;
+        var codexBorderVisibility = preferRight ? Visibility.Visible : Visibility.Collapsed;
+        CodexBorderTop.Visibility = codexBorderVisibility;
+        CodexBorderBottom.Visibility = codexBorderVisibility;
+        CodexBorderRight.Visibility = codexBorderVisibility;
+        CodexSourceIcon.Visibility = preferRight ? Visibility.Visible : Visibility.Collapsed;
+        DshSourceIcon.Visibility = preferRight ? Visibility.Collapsed : Visibility.Visible;
         _pet.LocationChanged += (_, _) => FollowPet();
         _pet.SizeChanged += (_, _) => FollowPet();
         _hideTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(_displaySeconds) };
@@ -95,13 +108,14 @@ public partial class StatusBubbleWindow : Window
             : null;
         var state = task?.State ?? _activity.State;
 
+        var sourceLabel = task?.SourceLabel ?? _activity.SourceLabel;
         StateText.Text = state switch
         {
-            "running" => LocalizationService.T("Codex 正在工作"),
+            "running" => LocalizationService.F("{0} 正在工作", sourceLabel),
             "waiting" => LocalizationService.T("需要你确认"),
             "failed" => LocalizationService.T("任务遇到问题"),
             "review" => LocalizationService.T("任务完成"),
-            _ => LocalizationService.T("Codex 状态")
+            _ => LocalizationService.F("{0} 状态", sourceLabel)
         };
         ApplyStateTheme(state);
         TaskTitleText.Text = task?.Title ?? "";
@@ -109,8 +123,9 @@ public partial class StatusBubbleWindow : Window
         MessageText.Text = string.IsNullOrWhiteSpace(task?.Message) ? _activity.Message : task.Message;
         TaskNavigation.Visibility = _activity.Tasks.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
         TaskCounterText.Text = _activity.Tasks.Count > 0 ? $"{_taskIndex + 1}/{_activity.Tasks.Count}" : "";
+        ActionHintText.Text = LocalizationService.F("点击气泡返回 {0}", sourceLabel);
         ActionButton.Visibility = state is "waiting" or "failed" ? Visibility.Visible : Visibility.Collapsed;
-        ActionButton.Content = LocalizationService.T("返回 Codex");
+        ActionButton.Content = LocalizationService.F("返回 {0}", sourceLabel);
     }
 
     private void ApplyStateTheme(string state)
@@ -143,16 +158,25 @@ public partial class StatusBubbleWindow : Window
     {
         if (!IsVisible && !IsLoaded) return;
         var area = _pet.CurrentDisplayWorkArea;
-        var preferredLeft = _pet.Left + _pet.ActualWidth + 10;
-        Left = preferredLeft + ActualWidth <= area.Right
-            ? preferredLeft
-            : Math.Max(area.Left, _pet.Left - ActualWidth - 10);
-        Top = Math.Clamp(_pet.Top + 18, area.Top, Math.Max(area.Top, area.Bottom - ActualHeight));
+        var right = _pet.Left + _pet.ActualWidth + 10;
+        var left = _pet.Left - ActualWidth - 10;
+        var preferredFits = _preferRight
+            ? right + ActualWidth <= area.Right
+            : left >= area.Left;
+        Left = _preferRight
+            ? (preferredFits ? right : Math.Max(area.Left, left))
+            : (preferredFits ? left : Math.Min(area.Right - ActualWidth, right));
+
+        var baseTop = _pet.Top + 18;
+        var desiredTop = preferredFits ? baseTop : baseTop + ActualHeight + 8;
+        if (!preferredFits && desiredTop + ActualHeight > area.Bottom)
+            desiredTop = baseTop - ActualHeight - 8;
+        Top = Math.Clamp(desiredTop, area.Top, Math.Max(area.Top, area.Bottom - ActualHeight));
     }
 
     private void Bubble_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        ActivityRequested?.Invoke(this, EventArgs.Empty);
+        ActivityRequested?.Invoke(SelectedSource());
         e.Handled = true;
     }
 
@@ -176,7 +200,15 @@ public partial class StatusBubbleWindow : Window
 
     private void ActionButton_OnClick(object sender, RoutedEventArgs e)
     {
-        ActivityRequested?.Invoke(this, EventArgs.Empty);
+        ActivityRequested?.Invoke(SelectedSource());
         e.Handled = true;
+    }
+
+    private string SelectedSource()
+    {
+        if (_activity is null) return _preferRight ? "codex" : "dsh";
+        return _activity.Tasks.Count > 0
+            ? _activity.Tasks[Math.Clamp(_taskIndex, 0, _activity.Tasks.Count - 1)].Source
+            : _activity.Source;
     }
 }

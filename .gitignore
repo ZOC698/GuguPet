@@ -4,6 +4,7 @@ obj/
 publish/
 release/
 artifacts/
+artifacts-dsh-listener/
 backups/
 launch-watcher/bin/
 launch-watcher/obj/
