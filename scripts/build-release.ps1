@@ -77,7 +77,7 @@ if ($LASTEXITCODE -ne 0) { throw "Updater publish failed with exit code $LASTEXI
 Copy-Item -LiteralPath (Join-Path $watcherDirectory "GuguPet.LaunchWatcher.exe") -Destination $packageDirectory -Force
 Copy-Item -LiteralPath (Join-Path $updaterDirectory "GuguPet.Updater.exe") -Destination $packageDirectory -Force
 
-foreach ($name in @("LICENSE", "ASSET_NOTICE.md", "PRIVACY.md", "SECURITY.md", "UNINSTALL.md", "README.md", "README.en.md", "README.ja.md")) {
+foreach ($name in @("LICENSE", "ASSET_NOTICE.md", "PRIVACY.md", "SECURITY.md", "UNINSTALL.md", "CODE_SIGNING_POLICY.md", "README.md", "README.en.md", "README.ja.md")) {
     Copy-Item -LiteralPath (Join-Path $repositoryRoot $name) -Destination $packageDirectory -Force
 }
 
