@@ -410,6 +410,15 @@
                                 <TextBlock x:Name="CodexStartupHint"
                                            Text="启用后注册事件驱动的隐藏监听器，不写入 Codex Hook，也不进行定时轮询。"
                                            Style="{StaticResource Hint}" Margin="27,5,0,0" TextWrapping="Wrap" />
+                                <CheckBox x:Name="AutoUpdateCheck" Content="自动下载更新（安装前确认）" Margin="0,10,0,0"
+                                          Checked="AutoUpdateCheck_OnChanged" Unchecked="AutoUpdateCheck_OnChanged" />
+                                <TextBlock Text="默认关闭；开启后仅连接官方 GitHub Releases，校验 SHA-256 后才允许安装。"
+                                           Style="{StaticResource Hint}" Margin="27,5,0,0" TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal" Margin="27,8,0,0">
+                                    <Button Content="立即检查更新" Click="CheckUpdate_OnClick" HorizontalAlignment="Left" />
+                                    <TextBlock x:Name="UpdateStatusText" Text="自动更新已关闭" Style="{StaticResource Hint}"
+                                               Margin="10,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                </StackPanel>
                                 <TextBlock Text="控制台关闭后咕嘎仍留在托盘；托盘菜单可投喂、暂停走动或退出。"
                                            Style="{StaticResource Hint}" Margin="27,5,0,0" />
                                 <Grid Margin="0,13,0,0">

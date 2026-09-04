@@ -18,10 +18,13 @@ public partial class ControlWindow : Window
     public event EventHandler? SettingsChanged;
     public event EventHandler<bool>? StartupChanged;
     public event EventHandler<bool>? CodexStartupChanged;
+    public event EventHandler<bool>? AutoUpdateChanged;
+    public event EventHandler? CheckUpdateRequested;
     public event EventHandler? PreviewStartupRequested;
     public bool CodexSyncEnabled => CodexSyncCheck.IsChecked == true;
     public bool StartupAnimationEnabled => StartupAnimationCheck.IsChecked == true;
     public bool ShowControlPanelOnLaunch => ShowControlOnLaunchCheck.IsChecked == true;
+    public bool AutoUpdateEnabled => AutoUpdateCheck.IsChecked == true;
     public string SelectedLanguage => LanguageCombo.SelectedValue as string ?? "auto";
 
     public ControlWindow(
@@ -69,6 +72,10 @@ public partial class ControlWindow : Window
         BubbleDurationSlider.Value = settings.BubbleDisplaySeconds;
         StartupCheck.IsChecked = settings.StartWithWindows;
         SetCodexStartup(settings.StartWithCodex);
+        AutoUpdateCheck.IsChecked = settings.AutoUpdateEnabled;
+        UpdateStatusText.Text = settings.AutoUpdateEnabled
+            ? LocalizationService.T("等待自动检查更新")
+            : LocalizationService.T("自动更新已关闭");
         StartupAnimationCheck.IsChecked = settings.StartupAnimationEnabled;
         ShowControlOnLaunchCheck.IsChecked = settings.ShowControlPanelOnLaunch;
         _loading = false;
@@ -98,6 +105,8 @@ public partial class ControlWindow : Window
             : LocalizationService.T("启用后注册轻量事件监听器，不写入 Codex Hook；默认关闭。");
         _loading = false;
     }
+
+    public void SetUpdateStatus(string message) => UpdateStatusText.Text = message;
 
     public void ShowAndActivate()
     {
@@ -297,6 +306,15 @@ public partial class ControlWindow : Window
         if (IsInitialized && !_loading)
             CodexStartupChanged?.Invoke(this, CodexStartupCheck.IsChecked == true);
     }
+
+    private void AutoUpdateCheck_OnChanged(object sender, RoutedEventArgs e)
+    {
+        if (IsInitialized && !_loading)
+            AutoUpdateChanged?.Invoke(this, AutoUpdateCheck.IsChecked == true);
+    }
+
+    private void CheckUpdate_OnClick(object sender, RoutedEventArgs e) =>
+        CheckUpdateRequested?.Invoke(this, EventArgs.Empty);
 
     private void LanguageCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {

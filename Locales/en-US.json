@@ -152,6 +152,22 @@
     "[本地文件]": "[Local file]",
     "无法获取咕嘎程序路径。": "Unable to locate the Gugu executable.",
     "无法获取咕嘎程序目录。": "Unable to locate the Gugu program folder.",
-    "缺少咕嘎启动监听器。": "The Gugu startup watcher is missing."
+    "缺少咕嘎启动监听器。": "The Gugu startup watcher is missing.",
+    "自动下载更新（安装前确认）": "Automatically download updates (confirm before installing)",
+    "默认关闭；开启后仅连接官方 GitHub Releases，校验 SHA-256 后才允许安装。": "Off by default. When enabled, only official GitHub Releases are used, and installation is allowed only after SHA-256 verification.",
+    "立即检查更新": "Check for updates now",
+    "自动更新已关闭": "Automatic updates are off",
+    "等待自动检查更新": "Waiting to check for updates",
+    "正在检查更新…": "Checking for updates…",
+    "当前已是最新版 v{0}": "You are up to date (v{0})",
+    "正在下载 {0}…": "Downloading {0}…",
+    "{0} 已下载并通过校验": "{0} downloaded and verified",
+    "咕嘎 {0} 已下载并通过 SHA-256 校验。现在安装并重启吗？旧程序目录会保留为回滚备份。": "GuguPet {0} has been downloaded and passed SHA-256 verification. Install it and restart now? The previous program folder will be kept as a rollback backup.",
+    "咕嘎更新": "GuguPet update",
+    "{0} 已就绪，稍后可再次检查安装": "{0} is ready. Check again later to install it.",
+    "正在准备安装并重启…": "Preparing to install and restart…",
+    "无法启动更新器：{0}": "Could not start the updater: {0}",
+    "更新检查已取消": "Update check canceled",
+    "更新检查失败：{0}": "Update check failed: {0}"
   }
 }

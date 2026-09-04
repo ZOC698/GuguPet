@@ -22,6 +22,7 @@ public sealed class AppSettings
     public double BubbleDisplaySeconds { get; set; } = 10;
     public bool StartWithWindows { get; set; }
     public bool StartWithCodex { get; set; }
+    public bool AutoUpdateEnabled { get; set; }
     public bool StartupAnimationEnabled { get; set; } = true;
     public bool ShowControlPanelOnLaunch { get; set; }
     public string Language { get; set; } = "auto";

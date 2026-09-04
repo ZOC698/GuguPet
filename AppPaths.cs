@@ -10,6 +10,8 @@ public static class AppPaths
 
     public static string BridgeStatePath => Path.Combine(DataDirectory, "bridge-state.json");
 
+    public static string UpdatesDirectory => Path.Combine(DataDirectory, "updates");
+
     public static string CodexSessionsDirectory { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
         ".codex",
