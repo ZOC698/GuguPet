@@ -1,0 +1,51 @@
+name: Publish release assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to publish
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Validate version tag
+        shell: pwsh
+        run: |
+          [xml]$props = Get-Content -LiteralPath .\Directory.Build.props
+          $expected = "v$($props.Project.PropertyGroup.Version)"
+          if ('${{ inputs.tag }}' -ne $expected) {
+            throw "Requested tag '${{ inputs.tag }}' does not match project version '$expected'."
+          }
+
+      - name: Set up .NET 7
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 7.0.x
+
+      - name: Build release assets
+        shell: pwsh
+        run: .\scripts\build-release.ps1 -OutputDirectory artifacts-release
+
+      - name: Upload assets and publish draft
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ inputs.tag }}'
+          gh release upload $tag `
+            .\artifacts-release\GuguPet-Windows-x64-$tag.zip `
+            .\artifacts-release\SHA256SUMS-$tag.txt `
+            --clobber
+          gh release edit $tag --draft=false --latest
