@@ -39,6 +39,8 @@ public partial class PetWindow : Window
     private bool _resizing;
     private POINT _dragStartCursor;
     private POINT _lastDragCursor;
+    private int _dragDirectionAnchorX;
+    private string _dragAnimationState = "drag-held";
     private readonly Stopwatch _dragMotionClock = new();
     private double _dragVelocityX;
     private double _dragVelocityY;
@@ -562,6 +564,8 @@ public partial class PetWindow : Window
         StopInertia(restartAnimation: false);
         if (!GetCursorPos(out _dragStartCursor)) return;
         _lastDragCursor = _dragStartCursor;
+        _dragDirectionAnchorX = _dragStartCursor.X;
+        _dragAnimationState = "drag-held";
         _dragVelocityX = 0;
         _dragVelocityY = 0;
         _dragMotionClock.Restart();
@@ -583,7 +587,6 @@ public partial class PetWindow : Window
         var dy = cursor.Y - _dragStartCursor.Y;
         if (!_dragging && dx * dx + dy * dy < 36) return;
         _dragging = true;
-        var dragStepX = cursor.X - _lastDragCursor.X;
         Left = _dragStartLeft + dx;
         Top = _dragStartTop + dy;
         var elapsed = _dragMotionClock.Elapsed.TotalSeconds;
@@ -596,9 +599,23 @@ public partial class PetWindow : Window
             _lastDragCursor = cursor;
             _dragMotionClock.Restart();
         }
-        if (dragStepX >= 1) PlayTransient("drag-right");
-        else if (dragStepX <= -1) PlayTransient("drag-left");
-        else PlayTransient("drag-held");
+        // Mouse move events often contain alternating 0/1 px horizontal noise.
+        // Keep the current drag pose until movement crosses a small hysteresis
+        // threshold so the animation does not restart on every input event.
+        var directionDeltaX = cursor.X - _dragDirectionAnchorX;
+        if (directionDeltaX >= 3)
+        {
+            _dragAnimationState = "drag-right";
+            _dragDirectionAnchorX = cursor.X;
+        }
+        else if (directionDeltaX <= -3)
+        {
+            _dragAnimationState = "drag-left";
+            _dragDirectionAnchorX = cursor.X;
+        }
+
+        if (!string.Equals(_transientState, _dragAnimationState, StringComparison.OrdinalIgnoreCase))
+            PlayTransient(_dragAnimationState);
     }
 
     private void PetWindow_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
