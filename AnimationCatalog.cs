@@ -61,7 +61,15 @@ public static class AnimationCatalog
         ["belly-poke"] = IdleActionRow(13, 145, 230),
         ["celebrate-cheer"] = IdleActionRow(14, 135, 260),
         ["celebrate-clap"] = IdleActionRow(15, 115, 180),
-        ["celebrate-dance"] = IdleActionRow(16, 140, 220)
+        ["celebrate-dance"] = IdleActionRow(16, 140, 220),
+        // Drag poses remain visually stable while the pointer moves the window.
+        // Direction changes select a new pose instead of replaying a sway loop.
+        ["drag-held"] = IdleActionColumns(17, 120, 1),
+        ["drag-right"] = IdleActionColumns(17, 120, 2),
+        ["drag-left"] = IdleActionColumns(17, 120, 5),
+        ["drag-expressive-held"] = IdleActionColumns(18, 105, 0, 1),
+        ["drag-expressive-right"] = IdleActionColumns(18, 105, 2, 3),
+        ["drag-expressive-left"] = IdleActionColumns(18, 105, 4, 5)
     };
 
     public static bool IsValidState(string? state) =>
@@ -127,4 +135,11 @@ public static class AnimationCatalog
                 column == 7 ? finalDuration : duration,
                 SpriteSheetKind.IdleActions))
             .ToArray();
+
+    private static SpriteFrame[] IdleActionColumns(int row, int duration, params int[] columns) =>
+        columns.Select(column => new SpriteFrame(
+            row,
+            column,
+            duration,
+            SpriteSheetKind.IdleActions)).ToArray();
 }

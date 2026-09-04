@@ -11,6 +11,9 @@ CONCEPTS = ROOT.parent / "work" / "gugu-idle-concepts" / "generated"
 THINKING = ROOT.parent / "work" / "gugu-thinking-concepts"
 PERSONALITY = ROOT.parent / "work" / "gugu-personality-actions" / "generated"
 CELEBRATIONS = ROOT.parent / "work" / "gugu-completion-celebrations" / "generated"
+PASSIVE_DRAG = ROOT.parent / "work" / "gugu-passive-drag" / "generated"
+PASSIVE_DRAG_EXPRESSIVE = ROOT.parent / "work" / "gugu-passive-drag" / "expressive" / "generated"
+PASSIVE_DRAG_EXPRESSIVE_RIGHT = PASSIVE_DRAG_EXPRESSIVE / "gugu-passive-drag-expressive-right-pair-transparent.png"
 OUTPUT = ROOT / "Assets" / "idle-actions.png"
 
 CELL_W = 192
@@ -35,6 +38,8 @@ ROWS = (
     ("celebrate-cheer", "gugu-celebration-cheer-keyposes-transparent.png"),
     ("celebrate-clap", "gugu-celebration-clap-keyposes-transparent.png"),
     ("celebrate-dance", "gugu-celebration-dance-keyposes-transparent.png"),
+    ("passive-drag", "gugu-passive-drag-keyposes-transparent.png"),
+    ("passive-drag-expressive", "gugu-passive-drag-expressive-keyposes-v2-transparent.png"),
 )
 
 KEYPOSE_FILES = {
@@ -49,6 +54,12 @@ KEYPOSE_FILES = {
     "celebrate-cheer": "gugu-celebration-cheer-keyposes-transparent.png",
     "celebrate-clap": "gugu-celebration-clap-keyposes-transparent.png",
     "celebrate-dance": "gugu-celebration-dance-keyposes-transparent.png",
+    "passive-drag": "gugu-passive-drag-keyposes-transparent.png",
+    "passive-drag-expressive": "gugu-passive-drag-expressive-keyposes-v2-transparent.png",
+}
+
+KEYPOSE_GRIDS = {
+    "passive-drag-expressive": (3, 2),
 }
 
 KEYPOSE_SEQUENCE = {
@@ -65,6 +76,10 @@ KEYPOSE_SEQUENCE = {
     "celebrate-cheer": (0, 1, 2, 3, 2, 1, 0, 1),
     "celebrate-clap": (0, 1, 2, 3, 0, 1, 2, 3),
     "celebrate-dance": (0, 1, 2, 1, 0, 1, 2, 3),
+    # Lift, centered hang, screen-left lag, centered, then screen-right lag.
+    "passive-drag": (0, 1, 2, 2, 1, 3, 3, 1),
+    # Center arm beats, screen-left trailing pair, screen-right trailing pair.
+    "passive-drag-expressive": (0, 1, 2, 3, 4, 5, 0, 1),
 }
 
 
@@ -89,20 +104,19 @@ def fit_source(image: Image.Image, row_name: str) -> Image.Image:
     return image.resize(size, Image.Resampling.LANCZOS)
 
 
-def load_keyposes(path: Path) -> list[Image.Image]:
+def load_keyposes(path: Path, columns: int = 2, rows: int = 2) -> list[Image.Image]:
     board = path.open("rb")
     with board:
         image = Image.open(board).convert("RGBA")
         image.load()
-    half_w = image.width // 2
-    half_h = image.height // 2
-    quadrants = (
-        (0, 0, half_w, half_h),
-        (half_w, 0, image.width, half_h),
-        (0, half_h, half_w, image.height),
-        (half_w, half_h, image.width, image.height),
-    )
-    poses = [crop_visible(image.crop(box)) for box in quadrants]
+    poses = []
+    for row in range(rows):
+        top = round(image.height * row / rows)
+        bottom = round(image.height * (row + 1) / rows)
+        for column in range(columns):
+            left = round(image.width * column / columns)
+            right = round(image.width * (column + 1) / columns)
+            poses.append(crop_visible(image.crop((left, top, right, bottom))))
     max_w = max(pose.width for pose in poses)
     max_h = max(pose.height for pose in poses)
     scale = min((CELL_W - 16) / max_w, (CELL_H - 14) / max_h)
@@ -115,9 +129,34 @@ def load_keyposes(path: Path) -> list[Image.Image]:
     ]
 
 
-def place_pose(pose: Image.Image) -> Image.Image:
+def hood_tip_x(pose: Image.Image) -> float:
+    alpha = pose.getchannel("A")
+    samples = []
+    for y in range(min(18, pose.height)):
+        for x in range(pose.width):
+            value = alpha.getpixel((x, y))
+            if value >= 96:
+                samples.append((x, value))
+    if not samples:
+        return pose.width / 2
+    total_weight = sum(weight for _, weight in samples)
+    return sum(x * weight for x, weight in samples) / total_weight
+
+
+def place_pose(
+    pose: Image.Image,
+    *,
+    anchor_top: bool = False,
+    anchor_hood_tip: bool = False,
+) -> Image.Image:
     frame = Image.new("RGBA", (CELL_W, CELL_H), (0, 0, 0, 0))
-    frame.alpha_composite(pose, ((CELL_W - pose.width) // 2, CELL_H - pose.height - 5))
+    y = 5 if anchor_top else CELL_H - pose.height - 5
+    if anchor_hood_tip:
+        x = round(CELL_W / 2 - hood_tip_x(pose))
+        x = min(max(5, x), CELL_W - pose.width - 5)
+    else:
+        x = (CELL_W - pose.width) // 2
+    frame.alpha_composite(pose, (x, y))
     return frame
 
 
@@ -172,14 +211,31 @@ def transformed_frame(source: Image.Image, row_name: str, phase: float) -> Image
 def main() -> None:
     atlas = Image.new("RGBA", (CELL_W * FRAMES, CELL_H * len(ROWS)), (0, 0, 0, 0))
     for row, (row_name, filename) in enumerate(ROWS):
-        keypose_root = CELEBRATIONS if row_name.startswith("celebrate-") else PERSONALITY if row_name in {
-            "needs-input", "drink", "stretch", "sit-think", "head-pat", "belly-poke"
-        } else CONCEPTS
+        keypose_root = (
+            CELEBRATIONS if row_name.startswith("celebrate-")
+            else PASSIVE_DRAG_EXPRESSIVE if row_name == "passive-drag-expressive"
+            else PASSIVE_DRAG if row_name == "passive-drag"
+            else PERSONALITY if row_name in {
+                "needs-input", "drink", "stretch", "sit-think", "head-pat", "belly-poke"
+            }
+            else CONCEPTS
+        )
         keypose_path = keypose_root / KEYPOSE_FILES.get(row_name, "")
         if row_name in KEYPOSE_FILES and keypose_path.exists():
-            poses = load_keyposes(keypose_path)
+            grid_columns, grid_rows = KEYPOSE_GRIDS.get(row_name, (2, 2))
+            poses = load_keyposes(keypose_path, grid_columns, grid_rows)
+            if row_name == "passive-drag-expressive":
+                # The six-pose edit preserved the centered and screen-left pairs,
+                # while the isolated repair supplies a consistent screen-right pair.
+                poses = poses[:4] + load_keyposes(PASSIVE_DRAG_EXPRESSIVE_RIGHT, 2, 1)
             for column, pose_index in enumerate(KEYPOSE_SEQUENCE[row_name]):
-                atlas.alpha_composite(place_pose(poses[pose_index]), (column * CELL_W, row * CELL_H))
+                is_passive_drag = row_name.startswith("passive-drag")
+                frame = place_pose(
+                    poses[pose_index],
+                    anchor_top=is_passive_drag,
+                    anchor_hood_tip=is_passive_drag,
+                )
+                atlas.alpha_composite(frame, (column * CELL_W, row * CELL_H))
             print(f"Using semantic key poses for {row_name}: {keypose_path}")
             continue
 

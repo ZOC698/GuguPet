@@ -39,6 +39,9 @@ public partial class PetWindow : Window
     private bool _resizing;
     private POINT _dragStartCursor;
     private POINT _lastDragCursor;
+    private int _dragDirectionAnchorX;
+    private string _dragAnimationState = "drag-held";
+    private bool _dragUsesExpressivePose;
     private readonly Stopwatch _dragMotionClock = new();
     private double _dragVelocityX;
     private double _dragVelocityY;
@@ -393,7 +396,7 @@ public partial class PetWindow : Window
     {
         var persistentCodexState = _transientState is null &&
                                    !_baseState.Equals("idle", StringComparison.OrdinalIgnoreCase);
-        _sequence = _roaming || persistentCodexState
+        _sequence = _roaming || _dragging || persistentCodexState
             ? AnimationCatalog.GetLoopingSequence(CurrentState, _reducedMotion)
             : AnimationCatalog.GetSequence(CurrentState, _reducedMotion);
         _frameIndex = 0;
@@ -562,6 +565,8 @@ public partial class PetWindow : Window
         StopInertia(restartAnimation: false);
         if (!GetCursorPos(out _dragStartCursor)) return;
         _lastDragCursor = _dragStartCursor;
+        _dragDirectionAnchorX = _dragStartCursor.X;
+        _dragAnimationState = "drag-held";
         _dragVelocityX = 0;
         _dragVelocityY = 0;
         _dragMotionClock.Restart();
@@ -582,7 +587,12 @@ public partial class PetWindow : Window
         var dx = cursor.X - _dragStartCursor.X;
         var dy = cursor.Y - _dragStartCursor.Y;
         if (!_dragging && dx * dx + dy * dy < 36) return;
-        _dragging = true;
+        if (!_dragging)
+        {
+            _dragging = true;
+            _dragUsesExpressivePose = _random.Next(2) == 0;
+            _dragAnimationState = DragAnimationState("held");
+        }
         Left = _dragStartLeft + dx;
         Top = _dragStartTop + dy;
         var elapsed = _dragMotionClock.Elapsed.TotalSeconds;
@@ -595,9 +605,27 @@ public partial class PetWindow : Window
             _lastDragCursor = cursor;
             _dragMotionClock.Restart();
         }
-        if (dx >= 4) PlayTransient("running-right");
-        else if (dx <= -4) PlayTransient("running-left");
+        // Mouse move events often contain alternating 0/1 px horizontal noise.
+        // Keep the current drag pose until movement crosses a small hysteresis
+        // threshold so the animation does not restart on every input event.
+        var directionDeltaX = cursor.X - _dragDirectionAnchorX;
+        if (directionDeltaX >= 3)
+        {
+            _dragAnimationState = DragAnimationState("right");
+            _dragDirectionAnchorX = cursor.X;
+        }
+        else if (directionDeltaX <= -3)
+        {
+            _dragAnimationState = DragAnimationState("left");
+            _dragDirectionAnchorX = cursor.X;
+        }
+
+        if (!string.Equals(_transientState, _dragAnimationState, StringComparison.OrdinalIgnoreCase))
+            PlayTransient(_dragAnimationState);
     }
+
+    private string DragAnimationState(string direction) =>
+        _dragUsesExpressivePose ? $"drag-expressive-{direction}" : $"drag-{direction}";
 
     private void PetWindow_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {

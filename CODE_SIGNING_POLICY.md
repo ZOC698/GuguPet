@@ -16,6 +16,7 @@ The signed project-owned portable-executable files are:
 - `GuguPet.exe`
 - `GuguPet.dll`
 - `GuguPet.LaunchWatcher.exe`
+- `GuguPet.Updater.exe`
 
 Third-party and Microsoft runtime files are not re-signed as GuguPet files.
 Every signed release must be timestamped and verified before publication.
@@ -30,10 +31,12 @@ Every signing request requires manual approval by the approver.
 
 ## Privacy
 
-See the project [privacy notice](PRIVACY.md). GuguPet itself does not transfer
-information to networked systems unless the user explicitly requests an action
-that opens or hands data to another application. Codex and other applications
-have their own privacy terms and are not operated by this project.
+See the project [privacy notice](PRIVACY.md). The updater's network access is
+disabled by default and, when enabled or manually requested, is limited to the
+official GitHub Releases endpoint and release assets. It does not upload Codex
+or DSH content, settings, credentials, or session files. Codex, GitHub, and
+other applications have their own privacy terms and are not operated by this
+project.
 
 ## Verification
 

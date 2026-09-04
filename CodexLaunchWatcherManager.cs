@@ -81,7 +81,7 @@ public static class CodexLaunchWatcherManager
         });
     }
 
-    private static void SignalWatcherToStop()
+    public static void SignalWatcherToStop()
     {
         try
         {

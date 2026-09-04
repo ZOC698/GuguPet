@@ -24,7 +24,7 @@ The current release is not yet Authenticode-signed. Windows SmartScreen may disp
 
 - Idle animations
 - Hover-triggered jump
-- Running left or right while dragged with the left mouse button
+- While dragged with the left mouse button, Gugu is lifted by the penguin hood and leans with the movement; every drag randomly uses either the normal face or a `><` squeezed-eye pose with both flipper sleeves waving, while autonomous roaming keeps the original walking animation
 - First-launch wave
 - A roughly five-second peephole entrance when GuguPet starts: waiting, pushing a box, climbing onto a suitcase, approaching the lens, and blinking. It can be disabled or previewed from the control panel, and skipped with Esc
 - By default, startup shows only Gugu without opening the control panel. The panel-on-start option can be restored under the entrance-animation settings
@@ -52,13 +52,15 @@ The current release is not yet Authenticode-signed. Windows SmartScreen may disp
 - Optional screen-edge routine: walk to an edge, peek, settle down, then climb back into the work area
 - Dropping a file onto Gugu copies local file-handoff data and opens Codex; a bubble prompts the user to paste it into the input box
 - Status bubbles provide input-needed and failure-handling buttons, completion summaries, priority ordering for up to eight tasks, and left/right navigation
-- Below “New Codex task,” Gugu's context menu lists the three most recent primary tasks and their states. Clicking returns to Codex; the current public interface cannot deep-link to an exact task
+- Gugu's context menu keeps the common “New Codex task,” “Open DSH,” “Feed cookie,” and “Open control panel” actions
 
 ## State bridge
 
 “Auto sync” is enabled by default in the control panel. When Codex or DSH begins a task, Gugu switches to `running`; when input or approval is requested, to `waiting`; after completion, briefly to `review`; and on an explicit error, to `failed`. Codex integration reads session logs only. DSH integration connects only to `session.list` and two downlink event streams on the local loopback interface; it does not submit prompts, answer requests, read DSH credentials, or decode compressed logs. Neither integration reads or displays internal reasoning.
 
 “Start Gugu with Codex (no Hook)” under System Integration is disabled by default. When enabled by the user, GuguPet registers a standard per-user Windows startup entry and waits for `ChatGPT.exe` in a hidden watcher mode. Gugu appears when the Codex desktop app starts. Disabling the option removes the startup entry and stops the watcher; it does not require editing `hooks.json` or trusting a command in Codex CLI.
+
+The same section includes “Automatically download updates (confirm before installing),” which is disabled by default. When enabled, GuguPet checks this repository's latest stable GitHub Release every six hours. It downloads only the Windows x64 package, requires a matching SHA-256, and asks before installation. After confirmation, the separate updater keeps the previous program folder as a sibling rollback backup, swaps in the new package, and restarts GuguPet. Settings under `%LOCALAPPDATA%\GuguPet` are not overwritten. “Check for updates now” remains available without enabling automatic checks.
 
 ## Language packs
 

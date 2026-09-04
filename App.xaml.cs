@@ -23,6 +23,10 @@ public partial class App : System.Windows.Application
     private AppSettings _settings = new();
     private bool _demoCapture;
     private DispatcherTimer? _demoTimer;
+    private DispatcherTimer? _updateTimer;
+    private CancellationTokenSource? _updateCancellation;
+    private bool _updateCheckRunning;
+    private bool _updateInstallPending;
     private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(450) };
 
     protected override void OnStartup(StartupEventArgs e)
@@ -86,6 +90,8 @@ public partial class App : System.Windows.Application
         _controlWindow.SettingsChanged += (_, _) => QueueSave();
         _controlWindow.StartupChanged += (_, enabled) => SetStartup(enabled);
         _controlWindow.CodexStartupChanged += (_, enabled) => SetCodexStartup(enabled);
+        _controlWindow.AutoUpdateChanged += (_, enabled) => SetAutoUpdate(enabled);
+        _controlWindow.CheckUpdateRequested += async (_, _) => await CheckForUpdatesAsync(manual: true);
         _controlWindow.PreviewStartupRequested += (_, _) => PlayStartupAnimation(initialLaunch: false, showControlAfter: false);
 
         _saveTimer.Tick += (_, _) =>
@@ -160,6 +166,9 @@ public partial class App : System.Windows.Application
 
         if (bubblePreview is not null)
             ScheduleBubblePreview(bubblePreview.Split('=', 2)[1]);
+
+        if (!_demoCapture)
+            ConfigureAutoUpdate();
     }
 
     private void PublishMergedActivity()
@@ -358,6 +367,109 @@ public partial class App : System.Windows.Application
         catch { _settings.StartWithCodex = false; }
     }
 
+    private void ConfigureAutoUpdate()
+    {
+        _updateTimer = new DispatcherTimer();
+        _updateTimer.Tick += async (_, _) =>
+        {
+            _updateTimer.Stop();
+            await CheckForUpdatesAsync(manual: false);
+        };
+        if (_settings.AutoUpdateEnabled)
+        {
+            _controlWindow?.SetUpdateStatus(LocalizationService.T("等待自动检查更新"));
+            ScheduleUpdateCheck(TimeSpan.FromSeconds(8));
+        }
+        else
+        {
+            _controlWindow?.SetUpdateStatus(LocalizationService.T("自动更新已关闭"));
+        }
+    }
+
+    private void SetAutoUpdate(bool enabled)
+    {
+        _settings.AutoUpdateEnabled = enabled;
+        _updateCancellation?.Cancel();
+        _updateTimer?.Stop();
+        if (enabled)
+        {
+            _controlWindow?.SetUpdateStatus(LocalizationService.T("等待自动检查更新"));
+            ScheduleUpdateCheck(TimeSpan.FromSeconds(1));
+        }
+        else
+        {
+            _controlWindow?.SetUpdateStatus(LocalizationService.T("自动更新已关闭"));
+        }
+        QueueSave();
+    }
+
+    private void ScheduleUpdateCheck(TimeSpan delay)
+    {
+        if (_updateTimer is null || !_settings.AutoUpdateEnabled || _updateInstallPending) return;
+        _updateTimer.Stop();
+        _updateTimer.Interval = delay;
+        _updateTimer.Start();
+    }
+
+    private async Task CheckForUpdatesAsync(bool manual)
+    {
+        if (_updateCheckRunning || _updateInstallPending) return;
+        _updateTimer?.Stop();
+        _updateCheckRunning = true;
+        _updateCancellation?.Dispose();
+        _updateCancellation = new CancellationTokenSource();
+        var cancellationToken = _updateCancellation.Token;
+        try
+        {
+            _controlWindow?.SetUpdateStatus(LocalizationService.T("正在检查更新…"));
+            var release = await UpdateService.CheckAsync(cancellationToken);
+            if (release is null)
+            {
+                _controlWindow?.SetUpdateStatus(
+                    LocalizationService.F("当前已是最新版 v{0}", UpdateService.CurrentVersion.ToString(3)));
+                return;
+            }
+
+            _controlWindow?.SetUpdateStatus(LocalizationService.F("正在下载 {0}…", release.TagName));
+            var packagePath = await UpdateService.DownloadAsync(release, cancellationToken);
+            _controlWindow?.SetUpdateStatus(LocalizationService.F("{0} 已下载并通过校验", release.TagName));
+            var answer = System.Windows.MessageBox.Show(
+                LocalizationService.F("咕嘎 {0} 已下载并通过 SHA-256 校验。现在安装并重启吗？旧程序目录会保留为回滚备份。", release.TagName),
+                LocalizationService.T("咕嘎更新"),
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Information);
+            if (answer != MessageBoxResult.Yes)
+            {
+                _controlWindow?.SetUpdateStatus(LocalizationService.F("{0} 已就绪，稍后可再次检查安装", release.TagName));
+                return;
+            }
+
+            _controlWindow?.SetUpdateStatus(LocalizationService.T("正在准备安装并重启…"));
+            if (!UpdateService.TryLaunchInstaller(packagePath, out var error))
+            {
+                _controlWindow?.SetUpdateStatus(LocalizationService.F("无法启动更新器：{0}", error));
+                return;
+            }
+            _updateInstallPending = true;
+            ExitApplication();
+        }
+        catch (OperationCanceledException)
+        {
+            if (manual)
+                _controlWindow?.SetUpdateStatus(LocalizationService.T("更新检查已取消"));
+        }
+        catch (Exception exception)
+        {
+            _controlWindow?.SetUpdateStatus(LocalizationService.F("更新检查失败：{0}", exception.Message));
+        }
+        finally
+        {
+            _updateCheckRunning = false;
+            if (_settings.AutoUpdateEnabled && !_updateInstallPending)
+                ScheduleUpdateCheck(TimeSpan.FromHours(6));
+        }
+    }
+
     private void PrepareFilesForCodex(IReadOnlyList<string> files)
     {
         if (_statusBubble is null) return;
@@ -420,6 +532,7 @@ public partial class App : System.Windows.Application
         _settings.BubbleDisplaySeconds = _statusBubble.DisplaySeconds;
         _settings.StartupAnimationEnabled = _controlWindow.StartupAnimationEnabled;
         _settings.ShowControlPanelOnLaunch = _controlWindow.ShowControlPanelOnLaunch;
+        _settings.AutoUpdateEnabled = _controlWindow.AutoUpdateEnabled;
         _settings.Language = _controlWindow.SelectedLanguage;
         try { SettingsStore.Save(_settings); }
         catch (IOException) { }
@@ -429,6 +542,9 @@ public partial class App : System.Windows.Application
     private void ExitApplication()
     {
         _demoTimer?.Stop();
+        _updateTimer?.Stop();
+        _updateCancellation?.Cancel();
+        _updateCancellation?.Dispose();
         _saveTimer.Stop();
         SaveSettings();
         _bridge?.Dispose();

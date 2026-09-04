@@ -18,19 +18,26 @@ if (-not $outputRoot.StartsWith($repositoryRoot + [IO.Path]::DirectorySeparatorC
     throw "OutputDirectory must be inside the repository: $outputRoot"
 }
 
-$packageName = "GuguPet-Windows-x64"
+[xml]$versionProps = Get-Content -LiteralPath (Join-Path $repositoryRoot "Directory.Build.props")
+$version = [string]$versionProps.Project.PropertyGroup.Version
+if ([string]::IsNullOrWhiteSpace($version)) {
+    throw "Release version is missing from Directory.Build.props"
+}
+
+$packageName = "GuguPet-Windows-x64-v$version"
 $packageDirectory = Join-Path $outputRoot $packageName
 $watcherDirectory = Join-Path $outputRoot "watcher"
+$updaterDirectory = Join-Path $outputRoot "updater"
 $archivePath = Join-Path $outputRoot "$packageName.zip"
-$checksumPath = Join-Path $outputRoot "SHA256SUMS.txt"
+$checksumPath = Join-Path $outputRoot "SHA256SUMS-v$version.txt"
 
-foreach ($path in @($packageDirectory, $watcherDirectory, $archivePath, $checksumPath)) {
+foreach ($path in @($packageDirectory, $watcherDirectory, $updaterDirectory, $archivePath, $checksumPath)) {
     if (Test-Path -LiteralPath $path) {
         Remove-Item -LiteralPath $path -Recurse -Force
     }
 }
 
-New-Item -ItemType Directory -Force -Path $packageDirectory, $watcherDirectory | Out-Null
+New-Item -ItemType Directory -Force -Path $packageDirectory, $watcherDirectory, $updaterDirectory | Out-Null
 
 dotnet publish (Join-Path $repositoryRoot "GuguPet.csproj") `
     -c $Configuration `
@@ -55,7 +62,20 @@ dotnet publish (Join-Path $repositoryRoot "launch-watcher\GuguPet.LaunchWatcher.
 
 if ($LASTEXITCODE -ne 0) { throw "Launch watcher publish failed with exit code $LASTEXITCODE" }
 
+dotnet publish (Join-Path $repositoryRoot "updater\GuguPet.Updater.csproj") `
+    -c $Configuration `
+    -r $Runtime `
+    --self-contained true `
+    -p:PublishSingleFile=true `
+    -p:IncludeNativeLibrariesForSelfExtract=true `
+    -p:DebugSymbols=false `
+    -p:DebugType=None `
+    -o $updaterDirectory
+
+if ($LASTEXITCODE -ne 0) { throw "Updater publish failed with exit code $LASTEXITCODE" }
+
 Copy-Item -LiteralPath (Join-Path $watcherDirectory "GuguPet.LaunchWatcher.exe") -Destination $packageDirectory -Force
+Copy-Item -LiteralPath (Join-Path $updaterDirectory "GuguPet.Updater.exe") -Destination $packageDirectory -Force
 
 foreach ($name in @("LICENSE", "ASSET_NOTICE.md", "PRIVACY.md", "SECURITY.md", "UNINSTALL.md", "README.md", "README.en.md", "README.ja.md")) {
     Copy-Item -LiteralPath (Join-Path $repositoryRoot $name) -Destination $packageDirectory -Force
@@ -66,7 +86,7 @@ if ($unexpectedDebugFiles.Count -gt 0) {
     throw "Debug symbols must not be published: $($unexpectedDebugFiles.FullName -join ', ')"
 }
 
-$requiredFiles = @("GuguPet.exe", "GuguPet.dll", "GuguPet.LaunchWatcher.exe")
+$requiredFiles = @("GuguPet.exe", "GuguPet.dll", "GuguPet.LaunchWatcher.exe", "GuguPet.Updater.exe")
 foreach ($name in $requiredFiles) {
     if (-not (Test-Path -LiteralPath (Join-Path $packageDirectory $name))) {
         throw "Required release file is missing: $name"

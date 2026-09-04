@@ -31,7 +31,7 @@ jobs:
         with:
           name: GuguPet-Windows-x64-unsigned
           path: |
-            artifacts/GuguPet-Windows-x64.zip
-            artifacts/SHA256SUMS.txt
+            artifacts/GuguPet-Windows-x64-v*.zip
+            artifacts/SHA256SUMS-v*.txt
           if-no-files-found: error
           retention-days: 14

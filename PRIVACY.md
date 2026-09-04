@@ -26,6 +26,15 @@ the Codex desktop process starts, copy a file dropped on the pet into local
 handoff data, or open the Codex desktop application. These features are local,
 user-controlled, and disabled where stated in the interface.
 
+Automatic update checks are disabled by default. If the user enables them or
+clicks **Check for updates now**, GuguPet makes an HTTPS request to the official
+`ZOC698/GuguPet` GitHub Releases endpoint and may download the Windows x64 ZIP
+and checksum file. GitHub receives ordinary connection metadata such as the
+user's IP address and the `GuguPet/<version>` User-Agent. GuguPet does not send
+settings, Codex or DSH task content, session files, tokens, passwords, device
+names, or location data with an update request. A downloaded package must pass
+SHA-256 verification before the user is offered installation.
+
 Users should review the source and settings before enabling integrations. Bug
 reports should not include session logs, credentials, private prompts, or other
 sensitive local files.
