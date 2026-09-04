@@ -11,6 +11,7 @@ CONCEPTS = ROOT.parent / "work" / "gugu-idle-concepts" / "generated"
 THINKING = ROOT.parent / "work" / "gugu-thinking-concepts"
 PERSONALITY = ROOT.parent / "work" / "gugu-personality-actions" / "generated"
 CELEBRATIONS = ROOT.parent / "work" / "gugu-completion-celebrations" / "generated"
+PASSIVE_DRAG = ROOT.parent / "work" / "gugu-passive-drag" / "generated"
 OUTPUT = ROOT / "Assets" / "idle-actions.png"
 
 CELL_W = 192
@@ -35,6 +36,7 @@ ROWS = (
     ("celebrate-cheer", "gugu-celebration-cheer-keyposes-transparent.png"),
     ("celebrate-clap", "gugu-celebration-clap-keyposes-transparent.png"),
     ("celebrate-dance", "gugu-celebration-dance-keyposes-transparent.png"),
+    ("passive-drag", "gugu-passive-drag-keyposes-transparent.png"),
 )
 
 KEYPOSE_FILES = {
@@ -49,6 +51,7 @@ KEYPOSE_FILES = {
     "celebrate-cheer": "gugu-celebration-cheer-keyposes-transparent.png",
     "celebrate-clap": "gugu-celebration-clap-keyposes-transparent.png",
     "celebrate-dance": "gugu-celebration-dance-keyposes-transparent.png",
+    "passive-drag": "gugu-passive-drag-keyposes-transparent.png",
 }
 
 KEYPOSE_SEQUENCE = {
@@ -65,6 +68,8 @@ KEYPOSE_SEQUENCE = {
     "celebrate-cheer": (0, 1, 2, 3, 2, 1, 0, 1),
     "celebrate-clap": (0, 1, 2, 3, 0, 1, 2, 3),
     "celebrate-dance": (0, 1, 2, 1, 0, 1, 2, 3),
+    # Lift, centered hang, screen-left lag, centered, then screen-right lag.
+    "passive-drag": (0, 1, 2, 2, 1, 3, 3, 1),
 }
 
 
@@ -115,9 +120,10 @@ def load_keyposes(path: Path) -> list[Image.Image]:
     ]
 
 
-def place_pose(pose: Image.Image) -> Image.Image:
+def place_pose(pose: Image.Image, *, anchor_top: bool = False) -> Image.Image:
     frame = Image.new("RGBA", (CELL_W, CELL_H), (0, 0, 0, 0))
-    frame.alpha_composite(pose, ((CELL_W - pose.width) // 2, CELL_H - pose.height - 5))
+    y = 5 if anchor_top else CELL_H - pose.height - 5
+    frame.alpha_composite(pose, ((CELL_W - pose.width) // 2, y))
     return frame
 
 
@@ -172,14 +178,20 @@ def transformed_frame(source: Image.Image, row_name: str, phase: float) -> Image
 def main() -> None:
     atlas = Image.new("RGBA", (CELL_W * FRAMES, CELL_H * len(ROWS)), (0, 0, 0, 0))
     for row, (row_name, filename) in enumerate(ROWS):
-        keypose_root = CELEBRATIONS if row_name.startswith("celebrate-") else PERSONALITY if row_name in {
-            "needs-input", "drink", "stretch", "sit-think", "head-pat", "belly-poke"
-        } else CONCEPTS
+        keypose_root = (
+            CELEBRATIONS if row_name.startswith("celebrate-")
+            else PASSIVE_DRAG if row_name == "passive-drag"
+            else PERSONALITY if row_name in {
+                "needs-input", "drink", "stretch", "sit-think", "head-pat", "belly-poke"
+            }
+            else CONCEPTS
+        )
         keypose_path = keypose_root / KEYPOSE_FILES.get(row_name, "")
         if row_name in KEYPOSE_FILES and keypose_path.exists():
             poses = load_keyposes(keypose_path)
             for column, pose_index in enumerate(KEYPOSE_SEQUENCE[row_name]):
-                atlas.alpha_composite(place_pose(poses[pose_index]), (column * CELL_W, row * CELL_H))
+                frame = place_pose(poses[pose_index], anchor_top=row_name == "passive-drag")
+                atlas.alpha_composite(frame, (column * CELL_W, row * CELL_H))
             print(f"Using semantic key poses for {row_name}: {keypose_path}")
             continue
 

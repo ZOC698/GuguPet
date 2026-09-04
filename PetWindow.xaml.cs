@@ -393,7 +393,7 @@ public partial class PetWindow : Window
     {
         var persistentCodexState = _transientState is null &&
                                    !_baseState.Equals("idle", StringComparison.OrdinalIgnoreCase);
-        _sequence = _roaming || persistentCodexState
+        _sequence = _roaming || _dragging || persistentCodexState
             ? AnimationCatalog.GetLoopingSequence(CurrentState, _reducedMotion)
             : AnimationCatalog.GetSequence(CurrentState, _reducedMotion);
         _frameIndex = 0;
@@ -583,6 +583,7 @@ public partial class PetWindow : Window
         var dy = cursor.Y - _dragStartCursor.Y;
         if (!_dragging && dx * dx + dy * dy < 36) return;
         _dragging = true;
+        var dragStepX = cursor.X - _lastDragCursor.X;
         Left = _dragStartLeft + dx;
         Top = _dragStartTop + dy;
         var elapsed = _dragMotionClock.Elapsed.TotalSeconds;
@@ -595,8 +596,9 @@ public partial class PetWindow : Window
             _lastDragCursor = cursor;
             _dragMotionClock.Restart();
         }
-        if (dx >= 4) PlayTransient("running-right");
-        else if (dx <= -4) PlayTransient("running-left");
+        if (dragStepX >= 1) PlayTransient("drag-right");
+        else if (dragStepX <= -1) PlayTransient("drag-left");
+        else PlayTransient("drag-held");
     }
 
     private void PetWindow_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
