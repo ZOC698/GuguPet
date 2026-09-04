@@ -31,6 +31,7 @@ public sealed record CodexActivityState(
 public sealed class CodexActivityWatcher : IDisposable
 {
     private static readonly TimeSpan ReviewDisplayDuration = TimeSpan.FromSeconds(8);
+    private static readonly TimeSpan RunningStaleDuration = TimeSpan.FromMinutes(30);
     private const int TailBytes = 4 * 1024 * 1024;
     private const int TitleTailBytes = 24 * 1024 * 1024;
     private const int MaxTasks = 8;
@@ -92,10 +93,13 @@ public sealed class CodexActivityWatcher : IDisposable
             var now = DateTimeOffset.Now;
             var tasks = snapshots.Select(snapshot =>
                 {
-                    var taskState = snapshot.State == "review" &&
-                                    now - snapshot.UpdatedAt >= ReviewDisplayDuration
-                        ? "idle"
-                        : snapshot.State;
+                    var age = now - snapshot.UpdatedAt;
+                    var taskState = snapshot.State switch
+                    {
+                        "review" when age >= ReviewDisplayDuration => "idle",
+                        "running" when age >= RunningStaleDuration => "idle",
+                        _ => snapshot.State
+                    };
                     return new CodexTaskSummary(
                         snapshot.ThreadId,
                         snapshot.Title,
@@ -140,9 +144,13 @@ public sealed class CodexActivityWatcher : IDisposable
             if (nextReview == default)
                 _reviewTimer.Change(Timeout.Infinite, Timeout.Infinite);
             else
-                _reviewTimer.Change(
-                    nextReview <= now ? TimeSpan.Zero : nextReview - now,
-                    Timeout.InfiniteTimeSpan);
+            {
+                var delay = nextReview <= now ? TimeSpan.Zero : nextReview - now;
+                // A bad system clock or imported session with a future timestamp
+                // must not overflow System.Threading.Timer.
+                if (delay > ReviewDisplayDuration) delay = ReviewDisplayDuration;
+                _reviewTimer.Change(delay, Timeout.InfiniteTimeSpan);
+            }
         }
         catch (IOException) { QueueScan(); }
         catch (UnauthorizedAccessException) { }
@@ -226,17 +234,33 @@ public sealed class CodexActivityWatcher : IDisposable
                     if (IsInternalContextMessage(rawMessage)) continue;
                     var candidate = Sanitize(rawMessage, 72);
                     if (!string.IsNullOrWhiteSpace(candidate)) title = candidate;
+                    if (timestamp < lifecycleAt) continue;
+                    lifecycleAt = timestamp;
+                    updatedAt = timestamp;
+                    state = "running";
+                    message = LocalizationService.T("Codex 正在处理任务");
                 }
                 else if (type == "agent_message" &&
                          payload.TryGetProperty("phase", out var phase) &&
                          phase.GetString() is "commentary" or "final_answer" &&
                          payload.TryGetProperty("message", out var agentMessage))
                 {
+                    if (timestamp < lifecycleAt) continue;
+                    var messagePhase = phase.GetString();
+                    lifecycleAt = timestamp;
+                    state = messagePhase == "final_answer" ? "review" : "running";
                     var candidate = Sanitize(agentMessage.GetString(), 150);
                     if (!string.IsNullOrWhiteSpace(candidate))
                     {
                         message = candidate;
                         updatedAt = timestamp;
+                    }
+                    else
+                    {
+                        updatedAt = timestamp;
+                        message = state == "review"
+                            ? LocalizationService.T("Codex 已完成任务")
+                            : LocalizationService.T("Codex 正在处理任务");
                     }
                 }
                 else if (type is "task_started" or "task_complete" or "error")
@@ -271,7 +295,7 @@ public sealed class CodexActivityWatcher : IDisposable
         // this turn is active, even if task_started fell outside the tail window.
         if (state is not "review" and not "failed" &&
             !string.IsNullOrWhiteSpace(message) && updatedAt > lifecycleAt &&
-            DateTimeOffset.Now - updatedAt < TimeSpan.FromMinutes(30))
+            DateTimeOffset.Now - updatedAt < RunningStaleDuration)
             state = "running";
 
         return new SessionSnapshot(threadId, title, state, message, updatedAt);
