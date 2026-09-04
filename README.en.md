@@ -24,7 +24,7 @@ The current release is not yet Authenticode-signed. Windows SmartScreen may disp
 
 - Idle animations
 - Hover-triggered jump
-- While dragged with the left mouse button, Gugu is lifted by the penguin hood and sways with the movement; autonomous roaming keeps the original walking animation
+- While dragged with the left mouse button, Gugu is lifted by the penguin hood and leans with the movement; every drag randomly uses either the normal face or a `><` squeezed-eye pose with both flipper sleeves waving, while autonomous roaming keeps the original walking animation
 - First-launch wave
 - A roughly five-second peephole entrance when GuguPet starts: waiting, pushing a box, climbing onto a suitcase, approaching the lens, and blinking. It can be disabled or previewed from the control panel, and skipped with Esc
 - By default, startup shows only Gugu without opening the control panel. The panel-on-start option can be restored under the entrance-animation settings

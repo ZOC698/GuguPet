@@ -6,6 +6,10 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "work" / "gugu-passive-drag" / "passive-drag-keyposes.png"
 OUTPUT = ROOT / "work" / "gugu-passive-drag" / "generated" / "gugu-passive-drag-keyposes-transparent.png"
+EXPRESSIVE_SOURCE = ROOT / "work" / "gugu-passive-drag" / "expressive" / "gugu-passive-drag-expressive-keyposes-v2.png"
+EXPRESSIVE_OUTPUT = ROOT / "work" / "gugu-passive-drag" / "expressive" / "generated" / "gugu-passive-drag-expressive-keyposes-v2-transparent.png"
+EXPRESSIVE_RIGHT_SOURCE = ROOT / "work" / "gugu-passive-drag" / "expressive" / "gugu-passive-drag-expressive-right-pair.png"
+EXPRESSIVE_RIGHT_OUTPUT = ROOT / "work" / "gugu-passive-drag" / "expressive" / "generated" / "gugu-passive-drag-expressive-right-pair-transparent.png"
 
 
 def remove_deep_blue_screen(image: Image.Image) -> Image.Image:
@@ -39,10 +43,16 @@ def remove_deep_blue_screen(image: Image.Image) -> Image.Image:
 
 
 def main() -> None:
-    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    image = remove_deep_blue_screen(Image.open(SOURCE))
-    image.save(OUTPUT, optimize=True)
-    print(f"Wrote {OUTPUT} ({image.width}x{image.height})")
+    sources = (
+        (SOURCE, OUTPUT),
+        (EXPRESSIVE_SOURCE, EXPRESSIVE_OUTPUT),
+        (EXPRESSIVE_RIGHT_SOURCE, EXPRESSIVE_RIGHT_OUTPUT),
+    )
+    for source, output in sources:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        image = remove_deep_blue_screen(Image.open(source))
+        image.save(output, optimize=True)
+        print(f"Wrote {output} ({image.width}x{image.height})")
 
 
 if __name__ == "__main__":

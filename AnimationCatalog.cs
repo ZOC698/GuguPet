@@ -66,7 +66,10 @@ public static class AnimationCatalog
         // Direction changes select a new pose instead of replaying a sway loop.
         ["drag-held"] = IdleActionColumns(17, 120, 1),
         ["drag-right"] = IdleActionColumns(17, 120, 2),
-        ["drag-left"] = IdleActionColumns(17, 120, 5)
+        ["drag-left"] = IdleActionColumns(17, 120, 5),
+        ["drag-expressive-held"] = IdleActionColumns(18, 105, 0, 1),
+        ["drag-expressive-right"] = IdleActionColumns(18, 105, 2, 3),
+        ["drag-expressive-left"] = IdleActionColumns(18, 105, 4, 5)
     };
 
     public static bool IsValidState(string? state) =>

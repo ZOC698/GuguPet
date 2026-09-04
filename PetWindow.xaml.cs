@@ -41,6 +41,7 @@ public partial class PetWindow : Window
     private POINT _lastDragCursor;
     private int _dragDirectionAnchorX;
     private string _dragAnimationState = "drag-held";
+    private bool _dragUsesExpressivePose;
     private readonly Stopwatch _dragMotionClock = new();
     private double _dragVelocityX;
     private double _dragVelocityY;
@@ -586,7 +587,12 @@ public partial class PetWindow : Window
         var dx = cursor.X - _dragStartCursor.X;
         var dy = cursor.Y - _dragStartCursor.Y;
         if (!_dragging && dx * dx + dy * dy < 36) return;
-        _dragging = true;
+        if (!_dragging)
+        {
+            _dragging = true;
+            _dragUsesExpressivePose = _random.Next(2) == 0;
+            _dragAnimationState = DragAnimationState("held");
+        }
         Left = _dragStartLeft + dx;
         Top = _dragStartTop + dy;
         var elapsed = _dragMotionClock.Elapsed.TotalSeconds;
@@ -605,18 +611,21 @@ public partial class PetWindow : Window
         var directionDeltaX = cursor.X - _dragDirectionAnchorX;
         if (directionDeltaX >= 3)
         {
-            _dragAnimationState = "drag-right";
+            _dragAnimationState = DragAnimationState("right");
             _dragDirectionAnchorX = cursor.X;
         }
         else if (directionDeltaX <= -3)
         {
-            _dragAnimationState = "drag-left";
+            _dragAnimationState = DragAnimationState("left");
             _dragDirectionAnchorX = cursor.X;
         }
 
         if (!string.Equals(_transientState, _dragAnimationState, StringComparison.OrdinalIgnoreCase))
             PlayTransient(_dragAnimationState);
     }
+
+    private string DragAnimationState(string direction) =>
+        _dragUsesExpressivePose ? $"drag-expressive-{direction}" : $"drag-{direction}";
 
     private void PetWindow_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
