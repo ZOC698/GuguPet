@@ -17,7 +17,7 @@ internal static class Program
         try
         {
             var package = RequirePath(options, "package", mustExist: true);
-            var target = RequirePath(options, "target", mustExist: true);
+            var target = RequirePath(options, "target", mustExist: false);
             ValidateTarget(target);
             var processId = int.TryParse(options.GetValueOrDefault("pid"), out var parsedPid) ? parsedPid : 0;
             WaitForProcess(processId);
@@ -48,11 +48,15 @@ internal static class Program
         ZipFile.ExtractToDirectory(package, staging, overwriteFiles: true);
         ValidatePackage(staging);
 
-        Retry(() => Directory.Move(target, backup), "The running GuguPet directory is still locked.");
+        var replacingExistingInstall = Directory.Exists(target);
+        if (replacingExistingInstall)
+            Retry(() => Directory.Move(target, backup), "The running GuguPet directory is still locked.");
         try
         {
             Directory.Move(staging, target);
-            Log($"Installed update into {target}; backup={backup}");
+            Log(replacingExistingInstall
+                ? $"Installed update into {target}; backup={backup}"
+                : $"Installed new version into {target}");
         }
         catch
         {
@@ -139,7 +143,9 @@ internal static class Program
         var root = Path.GetPathRoot(target);
         if (string.Equals(Path.TrimEndingDirectorySeparator(target), Path.TrimEndingDirectorySeparator(root ?? ""), StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Refusing to update a filesystem root.");
-        if (!File.Exists(Path.Combine(target, "GuguPet.exe")))
+        if (File.Exists(target))
+            throw new InvalidDataException("The target path is a file, not a directory.");
+        if (Directory.Exists(target) && !File.Exists(Path.Combine(target, "GuguPet.exe")))
             throw new InvalidDataException("The target directory is not a GuguPet installation.");
     }
 
