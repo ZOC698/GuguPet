@@ -28,8 +28,9 @@ if (-not $installRoot.StartsWith($releaseRoot + [IO.Path]::DirectorySeparatorCha
     -not [IO.Path]::GetFileName($installRoot).StartsWith("GuguPet-Windows-x64-v", [StringComparison]::OrdinalIgnoreCase)) {
     throw "InstallDirectory must be a versioned GuguPet folder inside $releaseRoot"
 }
-if (-not (Test-Path -LiteralPath (Join-Path $installRoot "GuguPet.exe"))) {
-    throw "The local installation is not valid: $installRoot"
+if ((Test-Path -LiteralPath $installRoot) -and
+    -not (Test-Path -LiteralPath (Join-Path $installRoot "GuguPet.exe"))) {
+    throw "The existing local installation is not valid: $installRoot"
 }
 
 & (Join-Path $PSScriptRoot "build-release.ps1") `
