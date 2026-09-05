@@ -192,7 +192,7 @@
 
                 <StackPanel Grid.Column="1" Margin="12,23,8,0">
                     <TextBlock Text="咕嘎桌宠" Foreground="White" FontSize="25" FontWeight="SemiBold" />
-                    <TextBlock Text="Codex Pet v2 · 咕嘎控制中心" Foreground="#BFC3C2" FontSize="11" Margin="1,4,0,0" />
+                    <TextBlock x:Name="AppVersionText" Text="Codex Pet v{0} · 咕嘎控制中心" Foreground="#BFC3C2" FontSize="11" Margin="1,4,0,0" />
                     <StackPanel Orientation="Horizontal" Margin="1,9,0,0">
                         <Ellipse x:Name="HeaderStatusDot" Width="8" Height="8" Fill="{StaticResource Cyan}" VerticalAlignment="Center" />
                         <TextBlock x:Name="HeaderStatusText" Text="待机中" Foreground="#EDEAE4" FontSize="11" Margin="7,0,0,0" />
@@ -260,7 +260,7 @@
                                     <Button Content="摸头反应" Tag="head-pat" Click="IdleAction_OnClick" Margin="0,0,8,8" />
                                     <Button Content="护肚反应" Tag="belly-poke" Click="IdleAction_OnClick" Margin="0,0,8,8" />
                                 </WrapPanel>
-                                <CheckBox x:Name="AutoIdleActionsCheck" Content="待机时随机播放扩展动作" IsChecked="True"
+                                <CheckBox x:Name="AutoIdleActionsCheck" Content="自动播放吉他、饼干与睡眠" IsChecked="True"
                                           Checked="AutoIdleActionsCheck_OnChanged" Unchecked="AutoIdleActionsCheck_OnChanged" Margin="0,4,0,0" />
                                 <Grid Margin="0,9,0,0">
                                     <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="72" /></Grid.ColumnDefinitions>
@@ -284,11 +284,11 @@
                                 </DockPanel>
                                 <CheckBox x:Name="AutoRoamCheck" Content="让咕嘎在桌面随机走动" IsChecked="True"
                                           Checked="AutoRoamCheck_OnChanged" Unchecked="AutoRoamCheck_OnChanged" />
-                                <TextBlock Text="每次待机约 4–10 秒后选择新位置；交互或 Codex 工作状态会立即打断。"
+                                <TextBlock Text="走动与扩展动作共用上方间隔；全部开启时，走动、吉他、饼干、睡眠各占 25%。"
                                            Style="{StaticResource Hint}" Margin="27,5,0,8" />
                                 <CheckBox x:Name="ChaseCursorCheck" Content="快速移动鼠标时尝试追逐（默认关闭）"
                                           Checked="ChaseCursorCheck_OnChanged" Unchecked="ChaseCursorCheck_OnChanged" Margin="0,3" />
-                                <CheckBox x:Name="EdgeActionsCheck" Content="偶尔去屏幕边缘探头、趴窝再爬回来"
+                                <CheckBox x:Name="EdgeActionsCheck" Content="抽中睡眠时去屏幕边缘，并随机选择三种睡姿"
                                           IsChecked="True" Checked="EdgeActionsCheck_OnChanged" Unchecked="EdgeActionsCheck_OnChanged" Margin="0,5,0,3" />
                                 <Grid Margin="0,7,0,0">
                                     <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="82" /></Grid.ColumnDefinitions>

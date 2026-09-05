@@ -38,6 +38,9 @@ public partial class ControlWindow : Window
         _loading = true;
         InitializeComponent();
         LocalizationService.Apply(this);
+        AppVersionText.Text = LocalizationService.F(
+            "Codex Pet v{0} · 咕嘎控制中心",
+            UpdateService.CurrentVersion.ToString(3));
         LanguageCombo.ItemsSource = new[]
             {
                 new LanguageOption("auto", LocalizationService.T("自动（跟随 Windows）"))
@@ -136,6 +139,7 @@ public partial class ControlWindow : Window
             "waiting" => LocalizationService.T("等待你的确认"),
             "failed" => LocalizationService.T("任务遇到问题"),
             "review" => LocalizationService.T("任务已完成"),
+            "interrupted" => LocalizationService.T("任务已中止"),
             _ => LocalizationService.T("待机中")
         };
         HeaderStatusDot.Fill = BrushFromHex(state.State switch
@@ -144,6 +148,7 @@ public partial class ControlWindow : Window
             "waiting" => "#F5A623",
             "failed" => "#E76554",
             "review" => "#3BA58A",
+            "interrupted" => "#8C7A6B",
             _ => "#A9AAA7"
         });
         TaskList.ItemsSource = state.Tasks;
@@ -403,6 +408,7 @@ public partial class ControlWindow : Window
         "waiting" => LocalizationService.T("等待输入"),
         "running" => LocalizationService.T("思考中"),
         "review" => LocalizationService.T("完成审阅"),
+        "interrupted" => LocalizationService.T("任务已中止"),
         _ => state
     };
 

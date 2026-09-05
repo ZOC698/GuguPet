@@ -12,6 +12,7 @@ namespace GuguPet;
 public partial class PetWindow : Window
 {
     private enum EdgeActionStage { None, Approach, Peek, Rest, Return }
+    private static readonly string[] SleepStates = { "sleep-side", "sleep-prone", "sleep-supine" };
 
     private readonly BitmapImage _sheet;
     private readonly BitmapImage _idleActionSheet;
@@ -32,7 +33,6 @@ public partial class PetWindow : Window
     private double _attentionSeconds = 1.4;
     private readonly Stopwatch _runningDurationClock = new();
     private double _nextRunningBreakSeconds = 120;
-    private readonly Stopwatch _inactivityClock = Stopwatch.StartNew();
     private double _nextThinkingChangeSeconds = 8;
     private bool _pointerDown;
     private bool _dragging;
@@ -65,14 +65,12 @@ public partial class PetWindow : Window
     private readonly Random _random = new();
     private bool _autoIdleActions = true;
     private double _idleActionIntervalSeconds = 45;
-    private readonly Stopwatch _roamClock = Stopwatch.StartNew();
     private readonly Stopwatch _roamStepClock = new();
     private bool _autoRoam = true;
     private bool _roaming;
     private double _roamTargetLeft;
     private double _roamTargetTop;
     private double _roamSpeed = 72;
-    private double _nextRoamDelaySeconds;
     private bool _chaseFastCursor;
     private readonly Stopwatch _cursorSpeedClock = Stopwatch.StartNew();
     private readonly Stopwatch _chaseCooldownClock = Stopwatch.StartNew();
@@ -81,9 +79,9 @@ public partial class PetWindow : Window
     private bool _edgeActionsEnabled = true;
     private EdgeActionStage _edgeActionStage;
     private DisplayEdge _edgeActionEdge;
+    private string _edgeRestState = "sleep-prone";
     private Rect _edgeWorkArea;
     private readonly Stopwatch _edgeActionClock = Stopwatch.StartNew();
-    private double _nextEdgeActionSeconds;
 
     public event EventHandler? OpenControlsRequested;
     public event EventHandler? NewCodexTaskRequested;
@@ -114,8 +112,6 @@ public partial class PetWindow : Window
         _timer = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(16) };
         _timer.Tick += (_, _) => Tick();
         _timer.Start();
-        ScheduleNextRoam();
-        ScheduleNextEdgeAction();
 
         MouseEnter += (_, _) =>
         {
@@ -182,7 +178,7 @@ public partial class PetWindow : Window
         {
             _autoRoam = value;
             if (!value) StopRoaming();
-            ScheduleNextRoam();
+            _idleActionClock.Restart();
         }
     }
     public double RoamSpeed
@@ -207,7 +203,7 @@ public partial class PetWindow : Window
         {
             _edgeActionsEnabled = value;
             if (!value) CancelEdgeAction();
-            ScheduleNextEdgeAction();
+            _idleActionClock.Restart();
         }
     }
 
@@ -258,8 +254,8 @@ public partial class PetWindow : Window
 
     public void SetBaseState(string state)
     {
-        // Custom idle actions are transient previews; Codex/bridge states remain
-        // limited to the original v2 state machine.
+        // Custom idle actions are transient previews; task lifecycle states are
+        // persistent base states (including the short-lived interrupted state).
         if (!AnimationCatalog.IsValidState(state) || AnimationCatalog.IsIdleAction(state)) return;
         var interruptedEdgeAction = _edgeActionStage != EdgeActionStage.None;
         CancelEdgeAction(restartAnimation: false);
@@ -292,10 +288,8 @@ public partial class PetWindow : Window
         {
             StopRoaming();
             ResetGazeTracking();
-            _inactivityClock.Restart();
         }
         _idleActionClock.Restart();
-        ScheduleNextRoam();
 
         // Give the four Codex states their own personality, then settle into
         // the canonical state. All thinking variants themselves remain
@@ -355,7 +349,6 @@ public partial class PetWindow : Window
         _transientState = null;
         _autoClearTransient = false;
         _idleActionClock.Restart();
-        ScheduleNextRoam();
         ResetGazeTracking();
         RestartAnimation();
     }
@@ -395,7 +388,8 @@ public partial class PetWindow : Window
     private void RestartAnimation()
     {
         var persistentCodexState = _transientState is null &&
-                                   !_baseState.Equals("idle", StringComparison.OrdinalIgnoreCase);
+                                   !_baseState.Equals("idle", StringComparison.OrdinalIgnoreCase) &&
+                                   !_baseState.Equals("interrupted", StringComparison.OrdinalIgnoreCase);
         _sequence = _roaming || _dragging || persistentCodexState
             ? AnimationCatalog.GetLoopingSequence(CurrentState, _reducedMotion)
             : AnimationCatalog.GetSequence(CurrentState, _reducedMotion);
@@ -468,30 +462,25 @@ public partial class PetWindow : Window
             TryStartFastCursorChase())
             return;
 
-        if (_edgeActionsEnabled && _edgeActionStage == EdgeActionStage.None && !_roaming && !_inertial && !_dragging && !_resizing &&
-            _transientState is null && _baseState.Equals("idle", StringComparison.OrdinalIgnoreCase) &&
-            _edgeActionClock.Elapsed.TotalSeconds >= _nextEdgeActionSeconds)
-        {
-            StartEdgeAction();
-            return;
-        }
-
-        if (_autoRoam && _edgeActionStage == EdgeActionStage.None && !_roaming && !_inertial && !_dragging && !_resizing && _transientState is null &&
-            _baseState.Equals("idle", StringComparison.OrdinalIgnoreCase) &&
-            _roamClock.Elapsed.TotalSeconds >= _nextRoamDelaySeconds)
-        {
-            StartRoaming();
-        }
-
-        if (_autoIdleActions && _edgeActionStage == EdgeActionStage.None && !_roaming && !_inertial && !_dragging && !_resizing && _transientState is null &&
+        if ((_autoRoam || _autoIdleActions) && _edgeActionStage == EdgeActionStage.None && !_roaming && !_inertial && !_dragging && !_resizing && _transientState is null &&
             _baseState.Equals("idle", StringComparison.OrdinalIgnoreCase) &&
             _idleActionClock.Elapsed.TotalSeconds >= _idleActionIntervalSeconds)
         {
-            var actions = _inactivityClock.Elapsed.TotalSeconds >= 90
-                ? new[] { "sleep-side", "sleep-prone", "sleep-supine" }
-                : new[] { "guitar", "cookie" };
-            var action = actions[_random.Next(actions.Length)];
-            PlayTransient(action, autoClear: true);
+            // With both switches enabled, the four categories are exactly
+            // equiprobable: roam, guitar, cookie, sleep. A disabled category
+            // is removed and the remaining categories stay equally weighted.
+            var categoryCount = (_autoRoam ? 1 : 0) + (_autoIdleActions ? 3 : 0);
+            var category = _random.Next(categoryCount);
+            if (_autoRoam && category-- == 0)
+                StartRoaming();
+            else if (category == 0)
+                PlayTransient("guitar", autoClear: true);
+            else if (category == 1)
+                PlayTransient("cookie", autoClear: true);
+            else if (_edgeActionsEnabled)
+                StartEdgeAction();
+            else
+                PlayTransient(SleepStates[_random.Next(SleepStates.Length)], autoClear: true);
             return;
         }
 
@@ -570,7 +559,6 @@ public partial class PetWindow : Window
         _dragVelocityX = 0;
         _dragVelocityY = 0;
         _dragMotionClock.Restart();
-        _inactivityClock.Restart();
         _pointerDown = true;
         _dragging = false;
         _dragStartLeft = Left;
@@ -737,7 +725,6 @@ public partial class PetWindow : Window
         _transientState = null;
         _autoClearTransient = false;
         _idleActionClock.Restart();
-        ScheduleNextRoam();
         if (restartAnimation) RestartAnimation();
     }
 
@@ -751,7 +738,6 @@ public partial class PetWindow : Window
 
     private void PetWindow_OnDrop(object sender, System.Windows.DragEventArgs e)
     {
-        _inactivityClock.Restart();
         if (e.Data.GetDataPresent("GuguPet.Cookie"))
         {
             PlayTransient("cookie", autoClear: true);
@@ -783,7 +769,6 @@ public partial class PetWindow : Window
     {
         StopRoaming();
         StopInertia(restartAnimation: false);
-        _inactivityClock.Restart();
         if (!GetCursorPos(out var cursor)) return;
         _resizing = true;
         _resizeStartWidth = Width;
@@ -807,23 +792,14 @@ public partial class PetWindow : Window
         e.Handled = true;
     }
 
-    private void ScheduleNextRoam()
-    {
-        _nextRoamDelaySeconds = _random.NextDouble() * 6 + 4;
-        _roamClock.Restart();
-    }
-
-    private void ScheduleNextEdgeAction()
-    {
-        _nextEdgeActionSeconds = 75 + _random.NextDouble() * 75;
-        _edgeActionClock.Restart();
-    }
-
     private void StartEdgeAction()
     {
         var display = DisplayGeometry.ForWindow(this);
         _edgeWorkArea = display.WorkArea;
         _edgeActionEdge = ChooseEdge(display.ExposedEdges);
+        // Lock one of the three authored sleep poses for the entire edge visit.
+        // Each pose has the same 1-in-3 probability.
+        _edgeRestState = SleepStates[_random.Next(SleepStates.Length)];
         _edgeActionStage = EdgeActionStage.Approach;
         var target = EdgePosition(_edgeWorkArea, _edgeActionEdge);
         StartRoamingTo(target.Left, target.Top, _edgeWorkArea);
@@ -851,7 +827,7 @@ public partial class PetWindow : Window
         if (_edgeActionStage == EdgeActionStage.Peek && _edgeActionClock.Elapsed.TotalSeconds >= 2.6)
         {
             _edgeActionStage = EdgeActionStage.Rest;
-            _transientState = "sleep-prone";
+            _transientState = _edgeRestState;
             _edgeActionClock.Restart();
             RestartAnimation();
         }
@@ -871,8 +847,6 @@ public partial class PetWindow : Window
         _transientState = null;
         _autoClearTransient = false;
         _idleActionClock.Restart();
-        ScheduleNextRoam();
-        ScheduleNextEdgeAction();
         RestartAnimation();
     }
 
@@ -890,8 +864,7 @@ public partial class PetWindow : Window
         Top = position.Top;
         _transientState = null;
         _autoClearTransient = false;
-        ScheduleNextRoam();
-        ScheduleNextEdgeAction();
+        _idleActionClock.Restart();
         if (restartAnimation) RestartAnimation();
     }
 
@@ -1027,7 +1000,6 @@ public partial class PetWindow : Window
         if (Math.Sqrt(Math.Pow(targetLeft - Left, 2) + Math.Pow(targetTop - Top, 2)) < 100)
             return false;
         _chaseCooldownClock.Restart();
-        _inactivityClock.Restart();
         StartRoamingTo(targetLeft, targetTop);
         return true;
     }
@@ -1076,7 +1048,6 @@ public partial class PetWindow : Window
         _transientState = null;
         _autoClearTransient = false;
         _idleActionClock.Restart();
-        ScheduleNextRoam();
         RestartAnimation();
     }
 

@@ -31,6 +31,7 @@ public sealed record CodexActivityState(
 public sealed class CodexActivityWatcher : IDisposable
 {
     private static readonly TimeSpan ReviewDisplayDuration = TimeSpan.FromSeconds(8);
+    private static readonly TimeSpan InterruptedDisplayDuration = TimeSpan.FromSeconds(2.2);
     private static readonly TimeSpan RunningStaleDuration = TimeSpan.FromMinutes(30);
     private const int TailBytes = 4 * 1024 * 1024;
     private const int TitleTailBytes = 24 * 1024 * 1024;
@@ -40,7 +41,7 @@ public sealed class CodexActivityWatcher : IDisposable
     private readonly Action<CodexActivityState> _onChanged;
     private readonly FileSystemWatcher? _watcher;
     private readonly System.Threading.Timer _debounce;
-    private readonly System.Threading.Timer _reviewTimer;
+    private readonly System.Threading.Timer _settleTimer;
     private readonly System.Threading.Timer _pollTimer;
     private readonly Dictionary<string, CachedSnapshot> _snapshotCache = new(StringComparer.OrdinalIgnoreCase);
     private string? _lastSignature;
@@ -50,7 +51,7 @@ public sealed class CodexActivityWatcher : IDisposable
         _sessionsDirectory = sessionsDirectory;
         _onChanged = onChanged;
         _debounce = new System.Threading.Timer(_ => Scan(), null, Timeout.Infinite, Timeout.Infinite);
-        _reviewTimer = new System.Threading.Timer(_ => SettleToIdle(), null, Timeout.Infinite, Timeout.Infinite);
+        _settleTimer = new System.Threading.Timer(_ => SettleToIdle(), null, Timeout.Infinite, Timeout.Infinite);
         _pollTimer = new System.Threading.Timer(_ => QueueScan(), null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
 
         if (Directory.Exists(sessionsDirectory))
@@ -97,6 +98,7 @@ public sealed class CodexActivityWatcher : IDisposable
                     var taskState = snapshot.State switch
                     {
                         "review" when age >= ReviewDisplayDuration => "idle",
+                        "interrupted" when age >= InterruptedDisplayDuration => "idle",
                         "running" when age >= RunningStaleDuration => "idle",
                         _ => snapshot.State
                     };
@@ -131,25 +133,28 @@ public sealed class CodexActivityWatcher : IDisposable
                 "waiting" => string.IsNullOrWhiteSpace(focus.Message) ? LocalizationService.T("Codex 需要你的输入") : focus.Message,
                 "failed" => string.IsNullOrWhiteSpace(focus.Message) ? LocalizationService.T("Codex 任务出现错误") : focus.Message,
                 "review" => string.IsNullOrWhiteSpace(focus.Message) ? LocalizationService.T("Codex 已完成任务") : focus.Message,
+                "interrupted" => string.IsNullOrWhiteSpace(focus.Message) ? LocalizationService.T("Codex 任务已中止") : focus.Message,
                 _ => LocalizationService.T("Codex 已待命")
             };
 
             var state = new CodexActivityState(focusState, message, focus.UpdatedAt, focus.ThreadId, tasks);
             Publish(state);
-            var nextReview = tasks
-                .Where(task => task.State == "review")
-                .Select(task => task.UpdatedAt + ReviewDisplayDuration)
+            var nextSettle = tasks
+                .Where(task => task.State is "review" or "interrupted")
+                .Select(task => task.UpdatedAt + (task.State == "review"
+                    ? ReviewDisplayDuration
+                    : InterruptedDisplayDuration))
                 .DefaultIfEmpty()
                 .Min();
-            if (nextReview == default)
-                _reviewTimer.Change(Timeout.Infinite, Timeout.Infinite);
+            if (nextSettle == default)
+                _settleTimer.Change(Timeout.Infinite, Timeout.Infinite);
             else
             {
-                var delay = nextReview <= now ? TimeSpan.Zero : nextReview - now;
+                var delay = nextSettle <= now ? TimeSpan.Zero : nextSettle - now;
                 // A bad system clock or imported session with a future timestamp
                 // must not overflow System.Threading.Timer.
                 if (delay > ReviewDisplayDuration) delay = ReviewDisplayDuration;
-                _reviewTimer.Change(delay, Timeout.InfiniteTimeSpan);
+                _settleTimer.Change(delay, Timeout.InfiniteTimeSpan);
             }
         }
         catch (IOException) { QueueScan(); }
@@ -190,6 +195,8 @@ public sealed class CodexActivityWatcher : IDisposable
         var message = "";
         var updatedAt = new DateTimeOffset(file.LastWriteTimeUtc);
         var lifecycleAt = DateTimeOffset.MinValue;
+        string? activeTurnId = null;
+        var turnAborted = false;
 
         string? line;
         while ((line = reader.ReadLine()) is not null)
@@ -203,6 +210,47 @@ public sealed class CodexActivityWatcher : IDisposable
 
                 var type = typeElement.GetString();
                 var timestamp = ReadTimestamp(root, file.LastWriteTimeUtc);
+                var isEvent = root.TryGetProperty("type", out var envelope) &&
+                              envelope.GetString() == "event_msg";
+                var turnId = payload.TryGetProperty("turn_id", out var turnElement) &&
+                             turnElement.ValueKind == JsonValueKind.String
+                    ? turnElement.GetString() : null;
+                if (isEvent && type == "task_started")
+                {
+                    if (timestamp < lifecycleAt) continue;
+                    activeTurnId = turnId;
+                    turnAborted = false;
+                }
+                else if (isEvent && type == "user_message" &&
+                         payload.TryGetProperty("message", out var newInput) &&
+                         !IsInternalContextMessage(newInput.GetString()))
+                {
+                    if (timestamp < lifecycleAt) continue;
+                    if (turnAborted) activeTurnId = null;
+                    turnAborted = false;
+                }
+                else if (!string.IsNullOrEmpty(turnId) && !string.IsNullOrEmpty(activeTurnId) &&
+                         turnId != activeTurnId)
+                {
+                    // Late events from a previous turn cannot stop or revive the current turn.
+                    continue;
+                }
+
+                if (isEvent && type == "turn_aborted")
+                {
+                    if (timestamp < lifecycleAt) continue;
+                    activeTurnId = turnId ?? activeTurnId;
+                    turnAborted = true;
+                    lifecycleAt = updatedAt = timestamp;
+                    state = "interrupted";
+                    message = LocalizationService.T("Codex 任务已中止");
+                    continue;
+                }
+                // An aborted turn stays interrupted even if buffered progress, tool output,
+                // approval requests or completion notifications arrive afterwards.
+                // Only an explicit new start or real user input opens the next turn.
+                if (turnAborted) continue;
+
                 if (type is "request_user_input" or "approval_request" or "request_approval" or "approval_requested")
                 {
                     if (timestamp < lifecycleAt) continue;
@@ -293,7 +341,7 @@ public sealed class CodexActivityWatcher : IDisposable
 
         // A fresh public progress message after the last lifecycle event means
         // this turn is active, even if task_started fell outside the tail window.
-        if (state is not "review" and not "failed" &&
+        if (state is not "review" and not "failed" and not "interrupted" &&
             !string.IsNullOrWhiteSpace(message) && updatedAt > lifecycleAt &&
             DateTimeOffset.Now - updatedAt < RunningStaleDuration)
             state = "running";
@@ -392,6 +440,7 @@ public sealed class CodexActivityWatcher : IDisposable
         "waiting" => LocalizationService.T("需要输入"),
         "failed" => LocalizationService.T("已阻塞"),
         "review" => LocalizationService.T("已完成"),
+        "interrupted" => LocalizationService.T("已中止"),
         _ => LocalizationService.T("待机")
     };
 
@@ -400,8 +449,9 @@ public sealed class CodexActivityWatcher : IDisposable
         "waiting" => 0,
         "failed" => 1,
         "running" => 2,
-        "review" => 3,
-        _ => 4
+        "interrupted" => 3,
+        "review" => 4,
+        _ => 5
     };
 
     private static string Sanitize(string? text, int maxLength)
@@ -437,7 +487,7 @@ public sealed class CodexActivityWatcher : IDisposable
     {
         _watcher?.Dispose();
         _debounce.Dispose();
-        _reviewTimer.Dispose();
+        _settleTimer.Dispose();
         _pollTimer.Dispose();
     }
 

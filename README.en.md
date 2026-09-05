@@ -49,7 +49,7 @@ The current release is not yet Authenticode-signed. Windows SmartScreen may disp
 - Click the head for a pat and double-click the belly for a belly-guard reaction; releasing a drag applies decaying inertia
 - Drag a cookie from the control panel onto Gugu; when the pointer approaches Gugu's feet, Gugu looks down to inspect it
 - After prolonged inactivity, Gugu randomly sleeps on its side, lies prone, or sleeps on its back. Fast mouse chasing is disabled by default and can be enabled separately
-- Optional screen-edge routine: walk to an edge, peek, settle down, then climb back into the work area
+- Optional screen-edge routine: walk to an edge, peek, choose side/prone/back sleep with equal probability, then climb back into the work area
 - Dropping a file onto Gugu copies local file-handoff data and opens Codex; a bubble prompts the user to paste it into the input box
 - Status bubbles provide input-needed and failure-handling buttons, completion summaries, priority ordering for up to eight tasks, and left/right navigation
 - Gugu's context menu keeps the common “New Codex task,” “Open DSH,” “Feed cookie,” and “Open control panel” actions
@@ -83,7 +83,7 @@ Other local programs can control GuguPet by editing `%LOCALAPPDATA%\GuguPet\brid
 }
 ```
 
-Supported states: `idle`, `running-right`, `running-left`, `waving`, `jumping`, `failed`, `waiting`, `running`, and `review`.
+Supported states: `idle`, `running-right`, `running-left`, `waving`, `jumping`, `failed`, `waiting`, `running`, `review`, and `interrupted`.
 
 Changes are hot-reloaded after the file is saved. Any local script can control the desktop companion by writing this file.
 
@@ -98,8 +98,16 @@ Maintainers can launch `--demo-capture` for an isolated, Gugu-only recording mod
 ## Publishing
 
 ```powershell
-dotnet publish .\GuguPet.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+.\scripts\build-release.ps1 -OutputDirectory artifacts
 ```
+
+When updating the maintainer's local development install, use the full-package updater instead of copying only `GuguPet.dll`:
+
+```powershell
+.\scripts\update-local-install.ps1
+```
+
+It rebuilds and synchronizes the main app, launch watcher, standalone updater, locale packs, and self-contained runtime as one package. The install is atomically replaced and verified file by file; the desktop shortcut and an enabled watcher registration are refreshed, while the previous directory remains as a rollback backup.
 
 ## Privacy, security, and licensing
 

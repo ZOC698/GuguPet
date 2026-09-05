@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Text;
 using System.Windows.Forms;
+using Microsoft.Win32;
 
 namespace GuguPet.Updater;
 
@@ -12,6 +13,7 @@ internal static class Program
     {
         var options = ParseArguments(args);
         var noRestart = options.ContainsKey("no-restart");
+        var watcherEnabled = IsWatcherEnabled();
         try
         {
             var package = RequirePath(options, "package", mustExist: true);
@@ -20,7 +22,7 @@ internal static class Program
             var processId = int.TryParse(options.GetValueOrDefault("pid"), out var parsedPid) ? parsedPid : 0;
             WaitForProcess(processId);
             Install(package, target);
-            if (!noRestart) Restart(target);
+            if (!noRestart) Restart(target, watcherEnabled);
         }
         catch (Exception exception)
         {
@@ -60,17 +62,41 @@ internal static class Program
         }
     }
 
-    private static void Restart(string target)
+    private static void Restart(string target, bool watcherEnabled)
     {
         var pet = Path.Combine(target, "GuguPet.exe");
         var watcher = Path.Combine(target, "GuguPet.LaunchWatcher.exe");
-        if (File.Exists(watcher))
+        if (watcherEnabled && File.Exists(watcher))
+        {
+            UpdateWatcherRegistration(watcher);
             Process.Start(new ProcessStartInfo(watcher) { UseShellExecute = true, WorkingDirectory = target });
+        }
         Process.Start(new ProcessStartInfo(pet, "--skip-startup-animation")
         {
             UseShellExecute = true,
             WorkingDirectory = target
         });
+    }
+
+    private static bool IsWatcherEnabled()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", false);
+            return key?.GetValue("GuguPet.CodexWatcher") is string value &&
+                   value.Contains("GuguPet.LaunchWatcher.exe", StringComparison.OrdinalIgnoreCase);
+        }
+        catch { return false; }
+    }
+
+    private static void UpdateWatcherRegistration(string watcher)
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true);
+            key.SetValue("GuguPet.CodexWatcher", $"\"{watcher}\"", RegistryValueKind.String);
+        }
+        catch { }
     }
 
     private static void WaitForProcess(int processId)

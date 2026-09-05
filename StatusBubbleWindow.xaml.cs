@@ -115,6 +115,7 @@ public partial class StatusBubbleWindow : Window
             "waiting" => LocalizationService.T("需要你确认"),
             "failed" => LocalizationService.T("任务遇到问题"),
             "review" => LocalizationService.T("任务完成"),
+            "interrupted" => LocalizationService.T("任务已中止"),
             _ => LocalizationService.F("{0} 状态", sourceLabel)
         };
         ApplyStateTheme(state);
@@ -136,6 +137,7 @@ public partial class StatusBubbleWindow : Window
             "waiting" => "#F5A623",
             "failed" => "#E76554",
             "review" => "#3BA58A",
+            "interrupted" => "#8C7A6B",
             _ => "#888888"
         });
         StateDot.Fill = accent;
