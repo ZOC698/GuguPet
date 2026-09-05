@@ -44,7 +44,8 @@ public static class ActivityStateMerger
         "waiting" => 0,
         "failed" => 1,
         "running" => 2,
-        "review" => 3,
-        _ => 4
+        "interrupted" => 3,
+        "review" => 4,
+        _ => 5
     };
 }

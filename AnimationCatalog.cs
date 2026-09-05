@@ -20,7 +20,7 @@ public static class AnimationCatalog
     public static readonly string[] StateNames =
     {
         "idle", "running-right", "running-left", "waving", "jumping",
-        "failed", "waiting", "running", "review"
+        "failed", "waiting", "running", "review", "interrupted"
     };
 
     public static readonly string[] IdleActionNames =
@@ -69,7 +69,8 @@ public static class AnimationCatalog
         ["drag-left"] = IdleActionColumns(17, 120, 5),
         ["drag-expressive-held"] = IdleActionColumns(18, 105, 0, 1),
         ["drag-expressive-right"] = IdleActionColumns(18, 105, 2, 3),
-        ["drag-expressive-left"] = IdleActionColumns(18, 105, 4, 5)
+        ["drag-expressive-left"] = IdleActionColumns(18, 105, 4, 5),
+        ["interrupted"] = IdleActionRow(19, 130, 260)
     };
 
     public static bool IsValidState(string? state) =>
@@ -88,6 +89,17 @@ public static class AnimationCatalog
 
         if (state.Equals("idle", StringComparison.OrdinalIgnoreCase))
             return new AnimationSequence(frames, 0);
+
+        // An aborted task gets one authored reaction, then rests on the normal
+        // idle loop while the short-lived status bubble finishes displaying.
+        if (state.Equals("interrupted", StringComparison.OrdinalIgnoreCase))
+        {
+            var oneShot = new List<SpriteFrame>(frames.Length + StateFrames["idle"].Length);
+            oneShot.AddRange(frames);
+            var idleStart = oneShot.Count;
+            oneShot.AddRange(StateFrames["idle"]);
+            return new AnimationSequence(oneShot, idleStart);
+        }
 
         // Codex plays a non-idle action three times, then settles into its idle loop.
         var sequence = new List<SpriteFrame>(frames.Length * 3 + StateFrames["idle"].Length);

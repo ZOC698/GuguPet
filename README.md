@@ -30,7 +30,7 @@
 - 默认启动后只显示咕嘎，不弹出控制台；可在“咕嘎登场动画”设置中恢复随启动显示控制台
 - 16方向鼠标注视
 - 鼠标注视使用窗口本地坐标和逐显示器 DPI 换算，支持不同缩放比例与多显示器
-- `running`、`waiting`、`failed`、`review` 等 Codex 状态动画
+- `running`、`waiting`、`failed`、`review` 和任务中止后的专用摊手动画
 - 鼠标注视为低优先级待机反应，停止移动后按可调时间自动恢复待机
 - 默认只读监听 `%USERPROFILE%\.codex\sessions`，自动响应 Codex 开始、完成和错误事件
 - 自动连接本机 DSH 的正式事件接口（优先 `127.0.0.1:5556`，兼容 `3080`），连接后完全由 WebSocket 事件驱动，不按秒扫描进程或压缩会话文件
@@ -49,7 +49,7 @@
 - 单击头部摸头、双击肚子触发护肚反应；拖动松手后有衰减惯性
 - 可把控制台里的饼干拖到咕嘎身上；鼠标靠近脚边时咕嘎低头观察
 - 长时间无操作会随机侧睡、趴窝或仰睡；快速鼠标追逐默认关闭并可单独开启
-- 可选屏幕边缘动作：走到边缘、探头、趴窝，再爬回工作区
+- 可选屏幕边缘动作：走到边缘、探头，从侧睡、趴窝、仰睡中等概率选择一种，再爬回工作区
 - 文件拖到咕嘎身上会复制为文件投递数据并打开 Codex，气泡提示在输入框粘贴
 - 状态气泡支持需要输入/失败处理按钮、完成摘要，以及最多 8 个任务的优先级排序和左右切换
 - 咕嘎右键菜单保留“新建 Codex 任务”“打开 DSH”“投喂饼干”和“打开控制台”等常用入口
@@ -83,7 +83,7 @@
 }
 ```
 
-支持的状态：`idle`、`running-right`、`running-left`、`waving`、`jumping`、`failed`、`waiting`、`running`、`review`。
+支持的状态：`idle`、`running-right`、`running-left`、`waving`、`jumping`、`failed`、`waiting`、`running`、`review`、`interrupted`。
 
 文件保存后会自动热更新。任何本地脚本都可以通过写入这个文件控制桌宠。
 
@@ -98,8 +98,16 @@ dotnet run --project .\GuguPet.csproj
 ## 发布
 
 ```powershell
-dotnet publish .\GuguPet.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+.\scripts\build-release.ps1 -OutputDirectory artifacts
 ```
+
+维护者更新本机正在使用的开发版时，应运行整包更新脚本，不要只复制 `GuguPet.dll`：
+
+```powershell
+.\scripts\update-local-install.ps1
+```
+
+该脚本从同一次构建同步主程序、启动监听器、独立更新器、语言包及自包含运行时，原子替换安装目录并逐文件校验。桌面快捷方式和已启用的监听器启动项会同步到新文件；旧目录保留为同级回滚备份。
 
 ## 隐私、安全与许可
 

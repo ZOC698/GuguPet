@@ -17,6 +17,7 @@
   <ItemGroup>
     <Compile Remove="launch-watcher\**\*.cs" />
     <Compile Remove="updater\**\*.cs" />
+    <Compile Remove="tests\**\*.cs" />
     <Compile Remove="artifacts-v*\**\*.cs" />
     <Resource Include="Assets\spritesheet.png" />
     <Resource Include="Assets\idle-actions.png" />

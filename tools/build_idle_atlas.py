@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CONCEPTS = ROOT.parent / "work" / "gugu-idle-concepts" / "generated"
 THINKING = ROOT.parent / "work" / "gugu-thinking-concepts"
 PERSONALITY = ROOT.parent / "work" / "gugu-personality-actions" / "generated"
+INTERRUPTED = ROOT.parent / "work" / "gugu-interrupted" / "generated"
 CELEBRATIONS = ROOT.parent / "work" / "gugu-completion-celebrations" / "generated"
 PASSIVE_DRAG = ROOT.parent / "work" / "gugu-passive-drag" / "generated"
 PASSIVE_DRAG_EXPRESSIVE = ROOT.parent / "work" / "gugu-passive-drag" / "expressive" / "generated"
@@ -40,6 +41,7 @@ ROWS = (
     ("celebrate-dance", "gugu-celebration-dance-keyposes-transparent.png"),
     ("passive-drag", "gugu-passive-drag-keyposes-transparent.png"),
     ("passive-drag-expressive", "gugu-passive-drag-expressive-keyposes-v2-transparent.png"),
+    ("interrupted", "gugu-interrupted-shrug-keyposes-transparent.png"),
 )
 
 KEYPOSE_FILES = {
@@ -56,6 +58,7 @@ KEYPOSE_FILES = {
     "celebrate-dance": "gugu-celebration-dance-keyposes-transparent.png",
     "passive-drag": "gugu-passive-drag-keyposes-transparent.png",
     "passive-drag-expressive": "gugu-passive-drag-expressive-keyposes-v2-transparent.png",
+    "interrupted": "gugu-interrupted-shrug-keyposes-transparent.png",
 }
 
 KEYPOSE_GRIDS = {
@@ -80,6 +83,8 @@ KEYPOSE_SEQUENCE = {
     "passive-drag": (0, 1, 2, 2, 1, 3, 3, 1),
     # Center arm beats, screen-left trailing pair, screen-right trailing pair.
     "passive-drag-expressive": (0, 1, 2, 3, 4, 5, 0, 1),
+    # Startled stop -> open shrug -> resigned hold -> lower both arms.
+    "interrupted": (0, 0, 1, 2, 2, 1, 3, 3),
 }
 
 
@@ -215,8 +220,9 @@ def main() -> None:
             CELEBRATIONS if row_name.startswith("celebrate-")
             else PASSIVE_DRAG_EXPRESSIVE if row_name == "passive-drag-expressive"
             else PASSIVE_DRAG if row_name == "passive-drag"
+            else INTERRUPTED if row_name == "interrupted"
             else PERSONALITY if row_name in {
-                "needs-input", "drink", "stretch", "sit-think", "head-pat", "belly-poke"
+                "needs-input", "drink", "stretch", "sit-think", "head-pat", "belly-poke",
             }
             else CONCEPTS
         )
