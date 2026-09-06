@@ -43,19 +43,25 @@ internal static class Program
             ?? throw new InvalidOperationException("Cannot update a filesystem root.");
         var token = $"{DateTime.UtcNow:yyyyMMddHHmmss}-{Environment.ProcessId}";
         var staging = Path.Combine(parent, $".gugupet-update-{token}");
-        var backup = target + $".backup-{DateTime.UtcNow:yyyyMMddHHmmss}";
+        var rollbackRoot = Path.Combine(parent, "GuguPet-rollback");
+        var backup = Path.Combine(rollbackRoot, "previous");
         Directory.CreateDirectory(staging);
         ZipFile.ExtractToDirectory(package, staging, overwriteFiles: true);
         ValidatePackage(staging);
 
         var replacingExistingInstall = Directory.Exists(target);
         if (replacingExistingInstall)
+        {
+            Directory.CreateDirectory(rollbackRoot);
+            if (Directory.Exists(backup))
+                Retry(() => Directory.Delete(backup, true), "The previous rollback directory is still locked.");
             Retry(() => Directory.Move(target, backup), "The running GuguPet directory is still locked.");
+        }
         try
         {
             Directory.Move(staging, target);
             Log(replacingExistingInstall
-                ? $"Installed update into {target}; backup={backup}"
+                ? $"Installed update into fixed target {target}; rollback={backup}"
                 : $"Installed new version into {target}");
         }
         catch
@@ -69,11 +75,17 @@ internal static class Program
     private static void Restart(string target, bool watcherEnabled)
     {
         var pet = Path.Combine(target, "GuguPet.exe");
-        var watcher = Path.Combine(target, "GuguPet.LaunchWatcher.exe");
-        if (watcherEnabled && File.Exists(watcher))
+        var packagedWatcher = Path.Combine(target, "GuguPet.LaunchWatcher.exe");
+        if (watcherEnabled && File.Exists(packagedWatcher))
         {
-            UpdateWatcherRegistration(watcher);
-            Process.Start(new ProcessStartInfo(watcher) { UseShellExecute = true, WorkingDirectory = target });
+            var watcher = InstallStableWatcher(packagedWatcher);
+            UpdateWatcherRegistration(watcher, pet);
+            Process.Start(new ProcessStartInfo(watcher)
+            {
+                Arguments = $"--pet \"{pet}\"",
+                UseShellExecute = true,
+                WorkingDirectory = Path.GetDirectoryName(watcher)!
+            });
         }
         Process.Start(new ProcessStartInfo(pet, "--skip-startup-animation")
         {
@@ -93,12 +105,27 @@ internal static class Program
         catch { return false; }
     }
 
-    private static void UpdateWatcherRegistration(string watcher)
+    private static string InstallStableWatcher(string source)
+    {
+        var launcherDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "GuguPet",
+            "Launcher");
+        var destination = Path.Combine(launcherDirectory, "GuguPet.LaunchWatcher.exe");
+        Directory.CreateDirectory(launcherDirectory);
+        Retry(() => File.Copy(source, destination, true), "The previous GuguPet launcher is still locked.");
+        return destination;
+    }
+
+    private static void UpdateWatcherRegistration(string watcher, string pet)
     {
         try
         {
             using var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true);
-            key.SetValue("GuguPet.CodexWatcher", $"\"{watcher}\"", RegistryValueKind.String);
+            key.SetValue(
+                "GuguPet.CodexWatcher",
+                $"\"{watcher}\" --pet \"{pet}\"",
+                RegistryValueKind.String);
         }
         catch { }
     }

@@ -37,6 +37,10 @@ Optional features can register a per-user Windows startup entry, observe when
 the Codex desktop process starts, copy a file dropped on the pet into local
 handoff data, or open the Codex desktop application. These features are local,
 user-controlled, and disabled where stated in the interface.
+When Start with Codex is enabled, the single current launch watcher is stored
+under `%LOCALAPPDATA%\GuguPet\Launcher`; it receives only the local path of the
+GuguPet executable that it should start. No service or administrator-level
+startup mechanism is installed.
 
 Automatic update checks are disabled by default. If the user enables them or
 clicks **Check for updates now**, GuguPet makes an HTTPS request to the official

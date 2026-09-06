@@ -379,7 +379,7 @@ public partial class App : System.Windows.Application
 
     private void SynchronizeCodexStartupIntegration()
     {
-        try { _settings.StartWithCodex = CodexLaunchWatcherManager.IsEnabled(); }
+        try { _settings.StartWithCodex = CodexLaunchWatcherManager.EnsureCurrent(); }
         catch { _settings.StartWithCodex = false; }
     }
 

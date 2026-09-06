@@ -17,12 +17,16 @@ internal static class Program
     private static readonly WindowProcedureCallback WindowProcedureDelegate = HandleWindowMessage;
     private static uint _shellHookMessage;
     private static IntPtr _codexWindow;
+    private static string _petExecutable = Path.Combine(AppContext.BaseDirectory, PetExecutableName);
 
     [STAThread]
-    private static void Main()
+    private static void Main(string[] args)
     {
-        using var mutex = new Mutex(true, MutexName, out var createdNew);
-        if (!createdNew) return;
+        _petExecutable = ResolvePetExecutable(args);
+        if (!File.Exists(_petExecutable)) return;
+
+        using var mutex = AcquireWatcherOwnership();
+        if (mutex is null) return;
 
         var instance = GetModuleHandle(null);
         var className = $"GuguPet.CodexWindowEventSink.{Environment.ProcessId}";
@@ -125,15 +129,76 @@ internal static class Program
     {
         try
         {
-            var executable = Path.Combine(AppContext.BaseDirectory, PetExecutableName);
-            if (!File.Exists(executable)) return;
-            Process.Start(new ProcessStartInfo(executable, "--codex-startup")
+            if (!File.Exists(_petExecutable)) return;
+            if (EnsureOnlyTargetPetIsRunning()) return;
+            Process.Start(new ProcessStartInfo(_petExecutable, "--codex-startup")
             {
                 UseShellExecute = true,
-                WorkingDirectory = AppContext.BaseDirectory
+                WorkingDirectory = Path.GetDirectoryName(_petExecutable) ?? AppContext.BaseDirectory
             });
         }
         catch { }
+    }
+
+    private static Mutex? AcquireWatcherOwnership()
+    {
+        for (var attempt = 0; attempt < 40; attempt++)
+        {
+            var mutex = new Mutex(true, MutexName, out var createdNew);
+            if (createdNew) return mutex;
+            mutex.Dispose();
+            SignalExistingWatcherToStop();
+            Thread.Sleep(100);
+        }
+        return null;
+    }
+
+    private static void SignalExistingWatcherToStop()
+    {
+        try
+        {
+            using var stopEvent = EventWaitHandle.OpenExisting(StopEventName);
+            stopEvent.Set();
+        }
+        catch (WaitHandleCannotBeOpenedException) { }
+    }
+
+    private static bool EnsureOnlyTargetPetIsRunning()
+    {
+        var target = Path.GetFullPath(_petExecutable);
+        var targetAlreadyRunning = false;
+        foreach (var process in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(PetExecutableName)))
+        {
+            using (process)
+            {
+                try
+                {
+                    var actual = process.MainModule?.FileName;
+                    if (actual is not null && string.Equals(
+                            Path.GetFullPath(actual), target, StringComparison.OrdinalIgnoreCase))
+                    {
+                        targetAlreadyRunning = true;
+                        continue;
+                    }
+
+                    process.Kill();
+                    process.WaitForExit(2000);
+                }
+                catch { }
+            }
+        }
+        return targetAlreadyRunning;
+    }
+
+    private static string ResolvePetExecutable(string[] args)
+    {
+        for (var index = 0; index + 1 < args.Length; index++)
+        {
+            if (!args[index].Equals("--pet", StringComparison.OrdinalIgnoreCase)) continue;
+            try { return Path.GetFullPath(args[index + 1]); }
+            catch { return ""; }
+        }
+        return Path.Combine(AppContext.BaseDirectory, PetExecutableName);
     }
 
     private static IntPtr FindCodexWindow()

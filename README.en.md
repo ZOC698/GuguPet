@@ -60,9 +60,9 @@ The current release is not yet Authenticode-signed. Windows SmartScreen may disp
 
 “Auto sync” is enabled by default in the control panel. When Codex or DSH begins a task, Gugu switches to `running`; when input or approval is requested, to `waiting`; after completion, briefly to `review`; and on an explicit error, to `failed`. Codex integration reads session logs only. DSH integration connects only to `session.list` and two downlink event streams on the local loopback interface; it does not submit prompts, answer requests, read DSH credentials, or decode compressed logs. Neither integration reads or displays internal reasoning.
 
-“Start Gugu with Codex (no Hook)” under System Integration is disabled by default. When enabled by the user, GuguPet registers a standard per-user Windows startup entry and waits for `ChatGPT.exe` in a hidden watcher mode. Gugu appears when the Codex desktop app starts. Disabling the option removes the startup entry and stops the watcher; it does not require editing `hooks.json` or trusting a command in Codex CLI.
+“Start Gugu with Codex (no Hook)” under System Integration is disabled by default. When enabled, GuguPet installs its single launch watcher under `%LOCALAPPDATA%\GuguPet\Launcher`, registers a standard per-user Windows startup entry, and waits for `ChatGPT.exe` in hidden watcher mode. Gugu appears when the Codex desktop app starts. A newer GuguPet automatically takes ownership from a legacy watcher so an old copy cannot keep launching an old pet. Disabling the option removes the startup entry and stops the watcher; it does not require editing `hooks.json` or trusting a command in Codex CLI.
 
-The same section includes “Automatically download updates (confirm before installing),” which is disabled by default. When enabled, GuguPet checks this repository's latest stable GitHub Release every six hours. It downloads only the Windows x64 package, requires a matching SHA-256, and asks before installation. After confirmation, the separate updater keeps the previous program folder as a sibling rollback backup, swaps in the new package, and restarts GuguPet. Settings under `%LOCALAPPDATA%\GuguPet` are not overwritten. “Check for updates now” remains available without enabling automatic checks.
+The same section includes “Automatically download updates (confirm before installing),” which is disabled by default. When enabled, GuguPet checks this repository's latest stable GitHub Release every six hours. It downloads only the Windows x64 package, requires a matching SHA-256, and asks before installation. After confirmation, the separate updater replaces the fixed program directory in place, stores the immediately previous version under the sibling `GuguPet-rollback\previous` directory, keeps only that one rollback copy, and restarts GuguPet. Settings under `%LOCALAPPDATA%\GuguPet` are not overwritten. “Check for updates now” remains available without enabling automatic checks.
 
 ## Language packs
 
@@ -109,7 +109,7 @@ When updating the maintainer's local development install, use the full-package u
 .\scripts\update-local-install.ps1
 ```
 
-It rebuilds and synchronizes the main app, launch watcher, standalone updater, locale packs, and self-contained runtime as one package. The install is atomically replaced and verified file by file; the desktop shortcut and an enabled watcher registration are refreshed, while the previous directory remains as a rollback backup.
+It rebuilds and synchronizes the main app, fixed-location launch watcher, standalone updater, locale packs, and self-contained runtime as one package. The active local install always uses `release\GuguPet-current`; the immediately previous version is moved to `release\GuguPet-rollback\previous`, with only one rollback copy retained. The new install is verified file by file, and the desktop shortcut and enabled watcher target are refreshed. Existing historical version directories remain untouched.
 
 ## Privacy, security, and licensing
 

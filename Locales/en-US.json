@@ -169,6 +169,8 @@
     "无法获取咕嘎程序路径。": "Unable to locate the Gugu executable.",
     "无法获取咕嘎程序目录。": "Unable to locate the Gugu program folder.",
     "缺少咕嘎启动监听器。": "The Gugu startup watcher is missing.",
+    "无法写入咕嘎启动项。": "Unable to update the Gugu startup entry.",
+    "咕嘎启动监听器未能接管当前版本。": "The Gugu startup watcher could not switch to the current version.",
     "自动下载更新（安装前确认）": "Automatically download updates (confirm before installing)",
     "默认关闭；开启后仅连接官方 GitHub Releases，校验 SHA-256 后才允许安装。": "Off by default. When enabled, only official GitHub Releases are used, and installation is allowed only after SHA-256 verification.",
     "立即检查更新": "Check for updates now",

@@ -18,15 +18,16 @@ $outputRoot = if ([IO.Path]::IsPathRooted($OutputDirectory)) {
     [IO.Path]::GetFullPath((Join-Path $repositoryRoot $OutputDirectory))
 }
 $installRoot = if ([string]::IsNullOrWhiteSpace($InstallDirectory)) {
-    [IO.Path]::GetFullPath((Join-Path $repositoryRoot "release\$packageName"))
+    [IO.Path]::GetFullPath((Join-Path $repositoryRoot "release\GuguPet-current"))
 } else {
     [IO.Path]::GetFullPath($InstallDirectory)
 }
 
 $releaseRoot = [IO.Path]::GetFullPath((Join-Path $repositoryRoot "release"))
 if (-not $installRoot.StartsWith($releaseRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -or
-    -not [IO.Path]::GetFileName($installRoot).StartsWith("GuguPet-Windows-x64-v", [StringComparison]::OrdinalIgnoreCase)) {
-    throw "InstallDirectory must be a versioned GuguPet folder inside $releaseRoot"
+    -not [IO.Path]::GetFileName($installRoot).StartsWith("GuguPet", [StringComparison]::OrdinalIgnoreCase) -or
+    [IO.Path]::GetFileName($installRoot).Equals("GuguPet-rollback", [StringComparison]::OrdinalIgnoreCase)) {
+    throw "InstallDirectory must be a GuguPet application folder inside $releaseRoot"
 }
 if ((Test-Path -LiteralPath $installRoot) -and
     -not (Test-Path -LiteralPath (Join-Path $installRoot "GuguPet.exe"))) {
@@ -53,12 +54,13 @@ $watcherEnabled = $runValue -is [string] -and $runValue.Contains("GuguPet.Launch
 
 $managedReleasePrefix = [IO.Path]::TrimEndingDirectorySeparator($releaseRoot) + [IO.Path]::DirectorySeparatorChar
 $installedProcesses = @(Get-CimInstance Win32_Process | Where-Object {
-    $_.ExecutablePath -is [string] -and
-    # Stop stale GuguPet copies from every versioned folder under this repo.
-    # Otherwise an older watcher can retain the global mutex and keep launching
-    # its matching old main executable after a successful local update.
-    $_.ExecutablePath.StartsWith($managedReleasePrefix, [StringComparison]::OrdinalIgnoreCase) -and
-    $_.Name -in @("GuguPet.exe", "GuguPet.LaunchWatcher.exe")
+    # Every GuguPet watcher uses one mutex, including legacy copies outside the
+    # fixed launcher directory. Stop all exact-name watcher processes so an old
+    # binary cannot retain ownership and silently reject the new watcher.
+    $_.Name -eq "GuguPet.LaunchWatcher.exe" -or
+    ($_.ExecutablePath -is [string] -and
+     $_.ExecutablePath.StartsWith($managedReleasePrefix, [StringComparison]::OrdinalIgnoreCase) -and
+     $_.Name -eq "GuguPet.exe")
 })
 $petWasRunning = @($installedProcesses | Where-Object Name -eq "GuguPet.exe").Count -gt 0
 
@@ -98,9 +100,38 @@ foreach ($sourceFile in $sourceFiles) {
 
 $watcherExecutable = Join-Path $installRoot "GuguPet.LaunchWatcher.exe"
 $petExecutable = Join-Path $installRoot "GuguPet.exe"
+$launcherRoot = Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)) "GuguPet\Launcher"
+$stableWatcherExecutable = Join-Path $launcherRoot "GuguPet.LaunchWatcher.exe"
 if ($watcherEnabled) {
-    Set-ItemProperty -LiteralPath $runKeyPath -Name $runValueName -Value "`"$watcherExecutable`""
-    Start-Process -FilePath $watcherExecutable -WorkingDirectory $installRoot -WindowStyle Hidden
+    New-Item -ItemType Directory -Force -Path $launcherRoot | Out-Null
+    Copy-Item -LiteralPath $watcherExecutable -Destination $stableWatcherExecutable -Force
+    $sourceWatcherHash = (Get-FileHash -LiteralPath $watcherExecutable -Algorithm SHA256).Hash
+    $stableWatcherHash = (Get-FileHash -LiteralPath $stableWatcherExecutable -Algorithm SHA256).Hash
+    if ($sourceWatcherHash -ne $stableWatcherHash) {
+        throw "Stable launch watcher failed verification."
+    }
+
+    Set-ItemProperty -LiteralPath $runKeyPath -Name $runValueName `
+        -Value "`"$stableWatcherExecutable`" --pet `"$petExecutable`""
+    Start-Process -FilePath $stableWatcherExecutable `
+        -ArgumentList @("--pet", "`"$petExecutable`"") `
+        -WorkingDirectory $launcherRoot -WindowStyle Hidden
+
+    $watcherVerified = $false
+    for ($attempt = 0; $attempt -lt 20; $attempt++) {
+        $watcherVerified = @(Get-CimInstance Win32_Process | Where-Object {
+            $_.Name -eq "GuguPet.LaunchWatcher.exe" -and
+            $_.ExecutablePath -is [string] -and
+            [IO.Path]::GetFullPath($_.ExecutablePath).Equals(
+                [IO.Path]::GetFullPath($stableWatcherExecutable),
+                [StringComparison]::OrdinalIgnoreCase)
+        }).Count -gt 0
+        if ($watcherVerified) { break }
+        Start-Sleep -Milliseconds 250
+    }
+    if (-not $watcherVerified) {
+        throw "The stable launch watcher did not remain running."
+    }
 }
 if ($petWasRunning) {
     Start-Process -FilePath $petExecutable -ArgumentList "--codex-startup" -WorkingDirectory $installRoot
@@ -118,7 +149,9 @@ $shortcut.Save()
 $watcherHash = (Get-FileHash -LiteralPath $watcherExecutable -Algorithm SHA256).Hash
 $updaterHash = (Get-FileHash -LiteralPath (Join-Path $installRoot "GuguPet.Updater.exe") -Algorithm SHA256).Hash
 Write-Host "Local GuguPet installation updated: $installRoot"
+Write-Host "Rollback directory: $(Join-Path $releaseRoot 'GuguPet-rollback\previous')"
 Write-Host "Verified files: $($sourceFiles.Count)"
-Write-Host "Launch watcher SHA-256: $watcherHash"
+Write-Host "Packaged launch watcher SHA-256: $watcherHash"
+if ($watcherEnabled) { Write-Host "Stable launch watcher: $stableWatcherExecutable" }
 Write-Host "Updater SHA-256: $updaterHash"
 Write-Host "Desktop shortcut: $shortcutPath"
