@@ -21,6 +21,18 @@ decode the compressed session store, submit
 prompts, answer requests, or send these values to an external server. Codex and
 DSH progress bubbles are kept separate and open only their matching local app.
 
+When music sync is enabled, GuguPet subscribes to the Windows Global System
+Media Transport Controls session selected by the operating system. It reads
+playback state and the title, artist, source application, and control
+capabilities that the player exposes to Windows. This data is displayed only
+in the local control panel and is not written to GuguPet files or uploaded.
+The previous, play/pause, and next buttons send the corresponding request back
+through the same Windows media-session API. GuguPet does not record, decode,
+fingerprint, or analyse audio, and it does not periodically scan player
+processes. Some browsers and video players also publish Windows media sessions
+and may therefore be recognized by this feature. Music sync can be disabled in
+the control panel.
+
 Optional features can register a per-user Windows startup entry, observe when
 the Codex desktop process starts, copy a file dropped on the pet into local
 handoff data, or open the Codex desktop application. These features are local,

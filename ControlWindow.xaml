@@ -240,12 +240,41 @@
 
                         <Border Style="{StaticResource SectionCard}">
                             <StackPanel>
+                                <DockPanel Margin="0,0,0,9">
+                                    <TextBlock Text="♫  音乐联动" Style="{StaticResource SectionTitle}" Margin="0" />
+                                    <CheckBox x:Name="MusicSyncCheck" Content="跟随系统媒体播放" IsChecked="False"
+                                              FontWeight="SemiBold" DockPanel.Dock="Right"
+                                              Checked="MusicSyncCheck_OnChanged" Unchecked="MusicSyncCheck_OnChanged" />
+                                </DockPanel>
+                                <Border Background="#F0FAFB" BorderBrush="#C5E8EC" BorderThickness="1"
+                                        CornerRadius="10" Padding="11">
+                                    <StackPanel>
+                                        <TextBlock x:Name="MusicStatus" Text="没有活动的媒体会话" FontWeight="SemiBold" />
+                                        <TextBlock x:Name="MusicTrack" Text="等待播放器提供曲目信息"
+                                                   TextTrimming="CharacterEllipsis" Margin="0,4,0,0"
+                                                   Foreground="{StaticResource Muted}" />
+                                    </StackPanel>
+                                </Border>
+                                <UniformGrid Columns="3" Margin="0,9,0,0">
+                                    <Button x:Name="MusicPreviousButton" Content="⏮" Click="MusicPrevious_OnClick" Margin="0,0,6,0" />
+                                    <Button x:Name="MusicPlayPauseButton" Content="▶" Click="MusicPlayPause_OnClick" Margin="3,0" />
+                                    <Button x:Name="MusicNextButton" Content="⏭" Click="MusicNext_OnClick" Margin="6,0,0,0" />
+                                </UniformGrid>
+                                <TextBlock Text="通过 Windows 媒体会话事件联动；不录音、不分析音频，也不定时扫描播放器。播放时随机切换耳机和架子鼓，任务状态优先。"
+                                           Style="{StaticResource Hint}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SectionCard}">
+                            <StackPanel>
                                 <TextBlock Text="★  扩展动作" Style="{StaticResource SectionTitle}" />
                                 <WrapPanel>
                                     <Button Content="胜利欢呼" Tag="celebrate-cheer" Click="IdleAction_OnClick" Margin="0,0,8,8" />
                                     <Button Content="开心鼓掌" Tag="celebrate-clap" Click="IdleAction_OnClick" Margin="0,0,8,8" />
                                     <Button Content="企鹅摇摆舞" Tag="celebrate-dance" Click="IdleAction_OnClick" Margin="0,0,8,8" />
                                     <Button Content="弹吉他" Tag="guitar" Click="IdleAction_OnClick" Margin="0,0,8,8" />
+                                    <Button Content="戴耳机听歌" Tag="headphones" Click="IdleAction_OnClick" Margin="0,0,8,8" />
+                                    <Button Content="敲架子鼓" Tag="drums" Click="IdleAction_OnClick" Margin="0,0,8,8" />
                                     <Button Content="投喂饼干" Tag="cookie" Click="FeedCookie_OnClick" Margin="0,0,8,8" />
                                     <Button x:Name="CookieDragButton" Content="拖动饼干 🍪" Margin="0,0,8,8"
                                             PreviewMouseLeftButtonDown="CookieDragButton_OnMouseDown"
@@ -260,7 +289,7 @@
                                     <Button Content="摸头反应" Tag="head-pat" Click="IdleAction_OnClick" Margin="0,0,8,8" />
                                     <Button Content="护肚反应" Tag="belly-poke" Click="IdleAction_OnClick" Margin="0,0,8,8" />
                                 </WrapPanel>
-                                <CheckBox x:Name="AutoIdleActionsCheck" Content="自动播放吉他、饼干与睡眠" IsChecked="True"
+                                <CheckBox x:Name="AutoIdleActionsCheck" Content="自动播放吉他、饼干、睡眠与音乐动作" IsChecked="True"
                                           Checked="AutoIdleActionsCheck_OnChanged" Unchecked="AutoIdleActionsCheck_OnChanged" Margin="0,4,0,0" />
                                 <Grid Margin="0,9,0,0">
                                     <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="72" /></Grid.ColumnDefinitions>
@@ -284,7 +313,7 @@
                                 </DockPanel>
                                 <CheckBox x:Name="AutoRoamCheck" Content="让咕嘎在桌面随机走动" IsChecked="True"
                                           Checked="AutoRoamCheck_OnChanged" Unchecked="AutoRoamCheck_OnChanged" />
-                                <TextBlock Text="走动与扩展动作共用上方间隔；全部开启时，走动、吉他、饼干、睡眠各占 25%。"
+                                <TextBlock Text="走动与扩展动作共用上方间隔；全部开启时，走动、吉他、饼干、睡眠、耳机、架子鼓各占六分之一。"
                                            Style="{StaticResource Hint}" Margin="27,5,0,8" />
                                 <CheckBox x:Name="ChaseCursorCheck" Content="快速移动鼠标时尝试追逐（默认关闭）"
                                           Checked="ChaseCursorCheck_OnChanged" Unchecked="ChaseCursorCheck_OnChanged" Margin="0,3" />

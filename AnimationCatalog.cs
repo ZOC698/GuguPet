@@ -27,7 +27,7 @@ public static class AnimationCatalog
     {
         "guitar", "cookie", "sleep-side", "sleep-prone", "sleep-supine",
         "needs-input", "drink", "stretch", "sit-think", "head-pat", "belly-poke",
-        "celebrate-cheer", "celebrate-clap", "celebrate-dance"
+        "celebrate-cheer", "celebrate-clap", "celebrate-dance", "headphones", "drums"
     };
 
     private static readonly Dictionary<string, SpriteFrame[]> StateFrames = new(StringComparer.OrdinalIgnoreCase)
@@ -70,7 +70,9 @@ public static class AnimationCatalog
         ["drag-expressive-held"] = IdleActionColumns(18, 105, 0, 1),
         ["drag-expressive-right"] = IdleActionColumns(18, 105, 2, 3),
         ["drag-expressive-left"] = IdleActionColumns(18, 105, 4, 5),
-        ["interrupted"] = IdleActionRow(19, 130, 260)
+        ["interrupted"] = IdleActionRow(19, 130, 260),
+        ["headphones"] = IdleActionRow(20, 165, 240),
+        ["drums"] = IdleActionRow(21, 120, 180)
     };
 
     public static bool IsValidState(string? state) =>

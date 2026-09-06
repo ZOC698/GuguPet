@@ -42,6 +42,15 @@ try
         throw new Exception("Interrupted animation is not a one-shot eight-frame idle-atlas row");
     Console.WriteLine("PASS interrupted-one-shot");
 
+    foreach (var (state, row) in new[] { ("headphones", 20), ("drums", 21) })
+    {
+        var animation = AnimationCatalog.GetSequence(state, reducedMotion: false);
+        if (!AnimationCatalog.IsIdleAction(state) || animation.Frames[0].Row != row ||
+            animation.Frames[0].Sheet != SpriteSheetKind.IdleActions || animation.Frames.Count != 30)
+            throw new Exception($"{state}: music action is not an eight-frame idle-atlas sequence");
+        Console.WriteLine($"PASS {state}-idle-action");
+    }
+
     var liveDirectory = Path.Combine(directory, "live");
     Directory.CreateDirectory(liveDirectory);
     File.WriteAllLines(Path.Combine(liveDirectory, "rollout-live.jsonl"),
@@ -58,6 +67,17 @@ try
             throw new Exception("Interrupted state did not settle to idle");
     }
     Console.WriteLine("PASS interrupted-settles");
+
+    var musicState = new TaskCompletionSource<MusicPlaybackState>(
+        TaskCreationOptions.RunContinuationsAsynchronously);
+    using (var music = new MusicPlaybackService(state => musicState.TrySetResult(state)))
+    {
+        await music.SetEnabledAsync(true);
+        var observed = await musicState.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        if (observed.Error is not null)
+            throw new Exception($"Windows media-session bridge failed: {observed.Error}");
+    }
+    Console.WriteLine("PASS windows-media-session-bridge");
 }
 finally { Directory.Delete(directory, recursive: true); }
 

@@ -10,6 +10,7 @@ public partial class ControlWindow : Window
 {
     private readonly PetWindow _pet;
     private readonly StatusBubbleWindow[] _bubbles;
+    private readonly MusicPlaybackService _music;
     private bool _forceClose;
     private bool _loading;
     private System.Windows.Point _cookieDragStart;
@@ -21,20 +22,24 @@ public partial class ControlWindow : Window
     public event EventHandler<bool>? AutoUpdateChanged;
     public event EventHandler? CheckUpdateRequested;
     public event EventHandler? PreviewStartupRequested;
+    public event EventHandler<bool>? MusicSyncChanged;
     public bool CodexSyncEnabled => CodexSyncCheck.IsChecked == true;
     public bool StartupAnimationEnabled => StartupAnimationCheck.IsChecked == true;
     public bool ShowControlPanelOnLaunch => ShowControlOnLaunchCheck.IsChecked == true;
     public bool AutoUpdateEnabled => AutoUpdateCheck.IsChecked == true;
+    public bool MusicSyncEnabled => MusicSyncCheck.IsChecked == true;
     public string SelectedLanguage => LanguageCombo.SelectedValue as string ?? "auto";
 
     public ControlWindow(
         PetWindow pet,
         StatusBubbleWindow codexBubble,
         StatusBubbleWindow dshBubble,
+        MusicPlaybackService music,
         AppSettings settings)
     {
         _pet = pet;
         _bubbles = new[] { codexBubble, dshBubble };
+        _music = music;
         _loading = true;
         InitializeComponent();
         LocalizationService.Apply(this);
@@ -70,6 +75,7 @@ public partial class ControlWindow : Window
         RoamSpeedSlider.Value = settings.RoamSpeed;
         ChaseCursorCheck.IsChecked = settings.ChaseFastCursor;
         EdgeActionsCheck.IsChecked = settings.EdgeActionsEnabled;
+        MusicSyncCheck.IsChecked = settings.MusicSyncEnabled;
         CodexSyncCheck.IsChecked = settings.CodexSyncEnabled;
         ActivityBubbleCheck.IsChecked = settings.ActivityBubbleEnabled;
         BubbleDurationSlider.Value = settings.BubbleDisplaySeconds;
@@ -82,6 +88,7 @@ public partial class ControlWindow : Window
         StartupAnimationCheck.IsChecked = settings.StartupAnimationEnabled;
         ShowControlOnLaunchCheck.IsChecked = settings.ShowControlPanelOnLaunch;
         _loading = false;
+        UpdateMusicState(MusicPlaybackState.Unavailable());
         Closing += (_, e) =>
         {
             if (_forceClose) return;
@@ -110,6 +117,26 @@ public partial class ControlWindow : Window
     }
 
     public void SetUpdateStatus(string message) => UpdateStatusText.Text = message;
+
+    public void UpdateMusicState(MusicPlaybackState state)
+    {
+        MusicStatus.Text = state.Error is not null
+            ? LocalizationService.T("无法读取系统媒体状态")
+            : !state.Available
+                ? LocalizationService.T("没有活动的媒体会话")
+                : state.IsPlaying
+                    ? LocalizationService.T("正在播放")
+                    : LocalizationService.T("已暂停");
+        var track = string.Join(" · ", new[] { state.Title, state.Artist, state.Source }
+            .Where(value => !string.IsNullOrWhiteSpace(value)));
+        MusicTrack.Text = string.IsNullOrWhiteSpace(track)
+            ? LocalizationService.T("等待播放器提供曲目信息")
+            : track;
+        MusicPreviousButton.IsEnabled = state.Available && state.CanPrevious;
+        MusicPlayPauseButton.IsEnabled = state.Available && state.CanToggle;
+        MusicPlayPauseButton.Content = state.IsPlaying ? "⏸" : "▶";
+        MusicNextButton.IsEnabled = state.Available && state.CanNext;
+    }
 
     public void ShowAndActivate()
     {
@@ -220,6 +247,22 @@ public partial class ControlWindow : Window
             _pet.EdgeActionsEnabled = EdgeActionsCheck.IsChecked == true;
         NotifySettingsChanged();
     }
+
+    private void MusicSyncCheck_OnChanged(object sender, RoutedEventArgs e)
+    {
+        if (IsInitialized && !_loading)
+            MusicSyncChanged?.Invoke(this, MusicSyncCheck.IsChecked == true);
+        NotifySettingsChanged();
+    }
+
+    private async void MusicPrevious_OnClick(object sender, RoutedEventArgs e) =>
+        await _music.PreviousAsync();
+
+    private async void MusicPlayPause_OnClick(object sender, RoutedEventArgs e) =>
+        await _music.TogglePlayPauseAsync();
+
+    private async void MusicNext_OnClick(object sender, RoutedEventArgs e) =>
+        await _music.NextAsync();
 
     private void RoamNow_OnClick(object sender, RoutedEventArgs e)
     {

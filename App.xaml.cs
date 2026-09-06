@@ -16,6 +16,7 @@ public partial class App : System.Windows.Application
     private BridgeStateWatcher? _bridge;
     private CodexActivityWatcher? _codexActivity;
     private DshActivityWatcher? _dshActivity;
+    private MusicPlaybackService? _music;
     private CodexActivityState? _lastCodexActivity;
     private CodexActivityState? _lastDshActivity;
     private TrayIconManager? _tray;
@@ -66,7 +67,12 @@ public partial class App : System.Windows.Application
             ActivityBubbleEnabled = _settings.ActivityBubbleEnabled,
             DisplaySeconds = _settings.BubbleDisplaySeconds
         };
-        _controlWindow = new ControlWindow(_petWindow, _statusBubble, _dshStatusBubble, _settings);
+        _music = new MusicPlaybackService(state => Dispatcher.BeginInvoke(() =>
+        {
+            _controlWindow?.UpdateMusicState(state);
+            _petWindow?.SetMusicPlayback(_settings.MusicSyncEnabled && state.IsPlaying);
+        }));
+        _controlWindow = new ControlWindow(_petWindow, _statusBubble, _dshStatusBubble, _music, _settings);
         _petWindow.OpenControlsRequested += (_, _) => _controlWindow.ShowAndActivate();
         _petWindow.NewCodexTaskRequested += (_, _) =>
         {
@@ -93,6 +99,13 @@ public partial class App : System.Windows.Application
         _controlWindow.AutoUpdateChanged += (_, enabled) => SetAutoUpdate(enabled);
         _controlWindow.CheckUpdateRequested += async (_, _) => await CheckForUpdatesAsync(manual: true);
         _controlWindow.PreviewStartupRequested += (_, _) => PlayStartupAnimation(initialLaunch: false, showControlAfter: false);
+        _controlWindow.MusicSyncChanged += async (_, enabled) =>
+        {
+            _settings.MusicSyncEnabled = enabled;
+            if (!enabled) _petWindow.SetMusicPlayback(false);
+            await _music.SetEnabledAsync(enabled);
+            QueueSave();
+        };
 
         _saveTimer.Tick += (_, _) =>
         {
@@ -166,6 +179,9 @@ public partial class App : System.Windows.Application
 
         if (bubblePreview is not null)
             ScheduleBubblePreview(bubblePreview.Split('=', 2)[1]);
+
+        if (!_demoCapture)
+            _ = _music.SetEnabledAsync(_settings.MusicSyncEnabled);
 
         if (!_demoCapture)
             ConfigureAutoUpdate();
@@ -527,6 +543,7 @@ public partial class App : System.Windows.Application
         _settings.RoamSpeed = _petWindow.RoamSpeed;
         _settings.ChaseFastCursor = _petWindow.ChaseFastCursor;
         _settings.EdgeActionsEnabled = _petWindow.EdgeActionsEnabled;
+        _settings.MusicSyncEnabled = _controlWindow.MusicSyncEnabled;
         _settings.CodexSyncEnabled = _controlWindow.CodexSyncEnabled;
         _settings.ActivityBubbleEnabled = _statusBubble.ActivityBubbleEnabled;
         _settings.BubbleDisplaySeconds = _statusBubble.DisplaySeconds;
@@ -550,6 +567,7 @@ public partial class App : System.Windows.Application
         _bridge?.Dispose();
         _codexActivity?.Dispose();
         _dshActivity?.Dispose();
+        _music?.Dispose();
         _tray?.Dispose();
         _controlWindow?.ForceClose();
         _statusBubble?.Close();

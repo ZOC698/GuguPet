@@ -17,6 +17,7 @@ public sealed class AppSettings
     public double RoamSpeed { get; set; } = 72;
     public bool ChaseFastCursor { get; set; }
     public bool EdgeActionsEnabled { get; set; } = true;
+    public bool MusicSyncEnabled { get; set; }
     public bool CodexSyncEnabled { get; set; } = true;
     public bool ActivityBubbleEnabled { get; set; } = true;
     public double BubbleDisplaySeconds { get; set; } = 10;

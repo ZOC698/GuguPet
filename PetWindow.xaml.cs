@@ -65,6 +65,10 @@ public partial class PetWindow : Window
     private readonly Random _random = new();
     private bool _autoIdleActions = true;
     private double _idleActionIntervalSeconds = 45;
+    private bool _musicPlaying;
+    private string? _musicAnimationState;
+    private readonly Stopwatch _musicActionClock = new();
+    private double _nextMusicActionSeconds = 24;
     private readonly Stopwatch _roamStepClock = new();
     private bool _autoRoam = true;
     private bool _roaming;
@@ -135,7 +139,9 @@ public partial class PetWindow : Window
         SourceInitialized += (_, _) => ConstrainToCurrentDisplay();
     }
 
-    public string CurrentState => _transientState ?? _thinkingState ?? _baseState;
+    public string CurrentState => _transientState ?? _thinkingState ??
+        (_baseState.Equals("idle", StringComparison.OrdinalIgnoreCase) ? _musicAnimationState : null) ??
+        _baseState;
     public bool GazeEnabled
     {
         get => _gazeEnabled;
@@ -231,7 +237,8 @@ public partial class PetWindow : Window
     public void RoamNow()
     {
         CancelEdgeAction();
-        if (_dragging || _resizing || !_baseState.Equals("idle", StringComparison.OrdinalIgnoreCase))
+        if (_dragging || _resizing || _musicPlaying ||
+            !_baseState.Equals("idle", StringComparison.OrdinalIgnoreCase))
             return;
         if (_transientState is not null)
             ClearTransient();
@@ -240,7 +247,8 @@ public partial class PetWindow : Window
 
     public void EdgeActionNow()
     {
-        if (_dragging || _resizing || !_baseState.Equals("idle", StringComparison.OrdinalIgnoreCase))
+        if (_dragging || _resizing || _musicPlaying ||
+            !_baseState.Equals("idle", StringComparison.OrdinalIgnoreCase))
             return;
         CancelEdgeAction(restartAnimation: false);
         if (_transientState is not null)
@@ -302,6 +310,33 @@ public partial class PetWindow : Window
             PlayTransient("thinking-spiral", autoClear: true);
         else
             RestartAnimation();
+    }
+
+    public void SetMusicPlayback(bool isPlaying)
+    {
+        if (_musicPlaying == isPlaying) return;
+        _musicPlaying = isPlaying;
+        if (isPlaying)
+        {
+            _musicAnimationState = _random.Next(2) == 0 ? "headphones" : "drums";
+            _nextMusicActionSeconds = 20 + _random.NextDouble() * 20;
+            _musicActionClock.Restart();
+            if (_baseState.Equals("idle", StringComparison.OrdinalIgnoreCase) && _transientState is null)
+            {
+                CancelEdgeAction(restartAnimation: false);
+                StopRoaming();
+                StopInertia(restartAnimation: false);
+                ResetGazeTracking();
+                RestartAnimation();
+            }
+        }
+        else
+        {
+            _musicAnimationState = null;
+            _musicActionClock.Reset();
+            if (_baseState.Equals("idle", StringComparison.OrdinalIgnoreCase) && _transientState is null)
+                RestartAnimation();
+        }
     }
 
     public void AcknowledgeProgress(double screenX, double screenY)
@@ -390,7 +425,10 @@ public partial class PetWindow : Window
         var persistentCodexState = _transientState is null &&
                                    !_baseState.Equals("idle", StringComparison.OrdinalIgnoreCase) &&
                                    !_baseState.Equals("interrupted", StringComparison.OrdinalIgnoreCase);
-        _sequence = _roaming || _dragging || persistentCodexState
+        var musicAnimationActive = _musicPlaying && _musicAnimationState is not null &&
+                                   _transientState is null &&
+                                   _baseState.Equals("idle", StringComparison.OrdinalIgnoreCase);
+        _sequence = _roaming || _dragging || persistentCodexState || musicAnimationActive
             ? AnimationCatalog.GetLoopingSequence(CurrentState, _reducedMotion)
             : AnimationCatalog.GetSequence(CurrentState, _reducedMotion);
         _frameIndex = 0;
@@ -457,19 +495,31 @@ public partial class PetWindow : Window
         else if (_inertial)
             AdvanceInertia();
 
-        if (_chaseFastCursor && _edgeActionStage == EdgeActionStage.None && !_roaming && !_inertial && !_dragging && !_resizing &&
+        if (_musicPlaying && _musicAnimationState is not null &&
+            _baseState.Equals("idle", StringComparison.OrdinalIgnoreCase) &&
+            _transientState is null && !_dragging && !_resizing && !_inertial &&
+            _musicActionClock.Elapsed.TotalSeconds >= _nextMusicActionSeconds)
+        {
+            _musicAnimationState = _musicAnimationState == "headphones" ? "drums" : "headphones";
+            _nextMusicActionSeconds = 20 + _random.NextDouble() * 20;
+            _musicActionClock.Restart();
+            RestartAnimation();
+            return;
+        }
+
+        if (!_musicPlaying && _chaseFastCursor && _edgeActionStage == EdgeActionStage.None && !_roaming && !_inertial && !_dragging && !_resizing &&
             _transientState is null && _baseState.Equals("idle", StringComparison.OrdinalIgnoreCase) &&
             TryStartFastCursorChase())
             return;
 
-        if ((_autoRoam || _autoIdleActions) && _edgeActionStage == EdgeActionStage.None && !_roaming && !_inertial && !_dragging && !_resizing && _transientState is null &&
+        if (!_musicPlaying && (_autoRoam || _autoIdleActions) && _edgeActionStage == EdgeActionStage.None && !_roaming && !_inertial && !_dragging && !_resizing && _transientState is null &&
             _baseState.Equals("idle", StringComparison.OrdinalIgnoreCase) &&
             _idleActionClock.Elapsed.TotalSeconds >= _idleActionIntervalSeconds)
         {
-            // With both switches enabled, the four categories are exactly
-            // equiprobable: roam, guitar, cookie, sleep. A disabled category
+            // With both switches enabled, the six categories are exactly
+            // equiprobable: roam, guitar, cookie, sleep, headphones, drums. A disabled category
             // is removed and the remaining categories stay equally weighted.
-            var categoryCount = (_autoRoam ? 1 : 0) + (_autoIdleActions ? 3 : 0);
+            var categoryCount = (_autoRoam ? 1 : 0) + (_autoIdleActions ? 5 : 0);
             var category = _random.Next(categoryCount);
             if (_autoRoam && category-- == 0)
                 StartRoaming();
@@ -477,14 +527,21 @@ public partial class PetWindow : Window
                 PlayTransient("guitar", autoClear: true);
             else if (category == 1)
                 PlayTransient("cookie", autoClear: true);
-            else if (_edgeActionsEnabled)
-                StartEdgeAction();
+            else if (category == 2)
+            {
+                if (_edgeActionsEnabled)
+                    StartEdgeAction();
+                else
+                    PlayTransient(SleepStates[_random.Next(SleepStates.Length)], autoClear: true);
+            }
+            else if (category == 3)
+                PlayTransient("headphones", autoClear: true);
             else
-                PlayTransient(SleepStates[_random.Next(SleepStates.Length)], autoClear: true);
+                PlayTransient("drums", autoClear: true);
             return;
         }
 
-        if (_gazeEnabled && !_roaming && !_inertial && !_dragging && _transientState is null &&
+        if (!_musicPlaying && _gazeEnabled && !_roaming && !_inertial && !_dragging && _transientState is null &&
             CurrentState.Equals("idle", StringComparison.OrdinalIgnoreCase) &&
             TryGetCursorNearFeet(out var feetCursor))
         {
@@ -496,7 +553,7 @@ public partial class PetWindow : Window
             return;
         }
 
-        if (_gazeEnabled && !_roaming && !_inertial && !_dragging && _transientState is null &&
+        if (!_musicPlaying && _gazeEnabled && !_roaming && !_inertial && !_dragging && _transientState is null &&
             CurrentState.Equals("idle", StringComparison.OrdinalIgnoreCase) &&
             TryGetActiveGazeCursor(out var cursor))
         {

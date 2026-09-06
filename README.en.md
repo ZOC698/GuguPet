@@ -40,8 +40,10 @@ The current release is not yet Authenticode-signed. Windows SmartScreen may disp
 - Clicking a live progress bubble restores and activates the Codex window; if Codex is not running, GuguPet attempts to launch it from the Start menu
 - Right-click to open the instant control panel
 - Adjustable size, opacity, movement speed, always-on-top mode, and reduced motion
-- Extra actions include playing guitar, eating a cookie, three sleeping poses, input-needed, drinking water, stretching, sitting and thinking, plus dedicated head-pat and belly-guard reactions
+- Extra actions include playing guitar, listening with headphones, playing a compact drum kit, eating a cookie, three sleeping poses, input-needed, drinking water, stretching, sitting and thinking, plus dedicated head-pat and belly-guard reactions
 - Preview extra actions instantly and configure their random idle interval from the control panel
+- Music sync is disabled by default. When enabled, it uses Windows media-session events to read playback state plus the title, artist, and source exposed by the player. During playback Gugu alternates between headphones and drums; previous, play/pause, and next controls are available in the panel
+- Music sync does not record or analyse audio and does not poll players every second. Codex / DSH activity, direct interaction, and manual actions take priority over music animation
 - Random walking targets within the desktop work area, with an enable switch and adjustable speed
 - While working, Gugu switches randomly between chin-resting (50%), spiral eyes (30%), and starry eyes (20%), with stable frame size and position
 - When input is required, Gugu randomly waves or performs the raise-flipper, lean-in, tap, and wait sequence; on completion, Gugu randomly shows starry eyes, jumps, or eats a cookie
