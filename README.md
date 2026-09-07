@@ -109,7 +109,7 @@ dotnet run --project .\GuguPet.csproj
 .\scripts\update-local-install.ps1
 ```
 
-该脚本从同一次构建同步主程序、固定位置启动监听器、独立更新器、语言包及自包含运行时。活动版本固定安装到 `release\GuguPet-current`，上一版放入 `release\GuguPet-rollback\previous`，每次只保留一个回滚版本；安装后逐文件校验，并同步桌面快捷方式与监听器目标。现有历史版本目录保持不变。
+该脚本从同一次构建同步主程序、固定位置启动监听器、独立更新器、语言包及自包含运行时。活动版本固定安装到 `release\GuguPet-current`，上一版放入 `release\GuguPet-rollback\previous`，每次只保留一个回滚版本；安装后逐文件校验，并同步桌面快捷方式与监听器目标。现有历史版本目录及主程序、素材保持不变，但会移除其中不再活动的旧监听器 EXE，防止 Windows 恢复旧后台程序。
 
 ## 隐私、安全与许可
 

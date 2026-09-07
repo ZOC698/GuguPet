@@ -102,6 +102,7 @@ $watcherExecutable = Join-Path $installRoot "GuguPet.LaunchWatcher.exe"
 $petExecutable = Join-Path $installRoot "GuguPet.exe"
 $launcherRoot = Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)) "GuguPet\Launcher"
 $stableWatcherExecutable = Join-Path $launcherRoot "GuguPet.LaunchWatcher.exe"
+$legacyWatchersRemoved = 0
 if ($watcherEnabled) {
     New-Item -ItemType Directory -Force -Path $launcherRoot | Out-Null
     Copy-Item -LiteralPath $watcherExecutable -Destination $stableWatcherExecutable -Force
@@ -133,6 +134,24 @@ if ($watcherEnabled) {
         throw "The stable launch watcher did not remain running."
     }
 }
+
+# Historical app folders are retained for reference, but their watcher binary
+# is removed so Windows cannot revive an obsolete background launcher. Keep
+# only the packaged watcher beside the fixed active installation.
+$activePackagedWatcher = [IO.Path]::GetFullPath($watcherExecutable)
+$legacyWatcherPaths = @(Get-ChildItem -LiteralPath $releaseRoot -Filter "GuguPet.LaunchWatcher.exe" -File -Recurse | ForEach-Object {
+    $candidate = [IO.Path]::GetFullPath($_.FullName)
+    if (-not $candidate.StartsWith($managedReleasePrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Historical watcher escaped the managed release root: $candidate"
+    }
+    if (-not $candidate.Equals($activePackagedWatcher, [StringComparison]::OrdinalIgnoreCase)) {
+        $candidate
+    }
+})
+foreach ($legacyWatcher in $legacyWatcherPaths) {
+    Remove-Item -LiteralPath $legacyWatcher -Force
+    $legacyWatchersRemoved++
+}
 if ($petWasRunning) {
     Start-Process -FilePath $petExecutable -ArgumentList "--codex-startup" -WorkingDirectory $installRoot
 }
@@ -153,5 +172,6 @@ Write-Host "Rollback directory: $(Join-Path $releaseRoot 'GuguPet-rollback\previ
 Write-Host "Verified files: $($sourceFiles.Count)"
 Write-Host "Packaged launch watcher SHA-256: $watcherHash"
 if ($watcherEnabled) { Write-Host "Stable launch watcher: $stableWatcherExecutable" }
+Write-Host "Historical launch watchers removed: $legacyWatchersRemoved"
 Write-Host "Updater SHA-256: $updaterHash"
 Write-Host "Desktop shortcut: $shortcutPath"

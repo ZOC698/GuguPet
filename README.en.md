@@ -109,7 +109,7 @@ When updating the maintainer's local development install, use the full-package u
 .\scripts\update-local-install.ps1
 ```
 
-It rebuilds and synchronizes the main app, fixed-location launch watcher, standalone updater, locale packs, and self-contained runtime as one package. The active local install always uses `release\GuguPet-current`; the immediately previous version is moved to `release\GuguPet-rollback\previous`, with only one rollback copy retained. The new install is verified file by file, and the desktop shortcut and enabled watcher target are refreshed. Existing historical version directories remain untouched.
+It rebuilds and synchronizes the main app, fixed-location launch watcher, standalone updater, locale packs, and self-contained runtime as one package. The active local install always uses `release\GuguPet-current`; the immediately previous version is moved to `release\GuguPet-rollback\previous`, with only one rollback copy retained. The new install is verified file by file, and the desktop shortcut and enabled watcher target are refreshed. Historical directories, applications, and assets remain, but their inactive watcher executables are removed so Windows cannot restore an obsolete background launcher.
 
 ## Privacy, security, and licensing
 

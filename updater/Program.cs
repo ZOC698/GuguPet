@@ -60,6 +60,8 @@ internal static class Program
         try
         {
             Directory.Move(staging, target);
+            if (replacingExistingInstall)
+                RemoveLegacyWatcherFromRollback(backup);
             Log(replacingExistingInstall
                 ? $"Installed update into fixed target {target}; rollback={backup}"
                 : $"Installed new version into {target}");
@@ -115,6 +117,23 @@ internal static class Program
         Directory.CreateDirectory(launcherDirectory);
         Retry(() => File.Copy(source, destination, true), "The previous GuguPet launcher is still locked.");
         return destination;
+    }
+
+    private static void RemoveLegacyWatcherFromRollback(string backup)
+    {
+        try
+        {
+            var watcher = Path.Combine(backup, "GuguPet.LaunchWatcher.exe");
+            if (File.Exists(watcher))
+            {
+                File.Delete(watcher);
+                Log($"Removed inactive watcher from rollback: {watcher}");
+            }
+        }
+        catch (Exception exception)
+        {
+            Log($"Could not remove inactive rollback watcher: {exception.Message}");
+        }
     }
 
     private static void UpdateWatcherRegistration(string watcher, string pet)
