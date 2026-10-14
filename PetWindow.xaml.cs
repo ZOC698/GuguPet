@@ -99,14 +99,14 @@ public partial class PetWindow : Window
         _sheet = new BitmapImage();
         _sheet.BeginInit();
         _sheet.CacheOption = BitmapCacheOption.OnLoad;
-        _sheet.UriSource = new Uri("pack://application:,,,/Assets/spritesheet.png", UriKind.Absolute);
+        _sheet.UriSource = new Uri("pack://application:,,,/GuguPet;component/Assets/spritesheet.png", UriKind.Absolute);
         _sheet.EndInit();
         _sheet.Freeze();
 
         _idleActionSheet = new BitmapImage();
         _idleActionSheet.BeginInit();
         _idleActionSheet.CacheOption = BitmapCacheOption.OnLoad;
-        _idleActionSheet.UriSource = new Uri("pack://application:,,,/Assets/idle-actions.png", UriKind.Absolute);
+        _idleActionSheet.UriSource = new Uri("pack://application:,,,/GuguPet;component/Assets/idle-actions.png", UriKind.Absolute);
         _idleActionSheet.EndInit();
         _idleActionSheet.Freeze();
 

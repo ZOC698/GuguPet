@@ -77,6 +77,13 @@ if ($LASTEXITCODE -ne 0) { throw "Updater publish failed with exit code $LASTEXI
 Copy-Item -LiteralPath (Join-Path $watcherDirectory "GuguPet.LaunchWatcher.exe") -Destination $packageDirectory -Force
 Copy-Item -LiteralPath (Join-Path $updaterDirectory "GuguPet.Updater.exe") -Destination $packageDirectory -Force
 
+# Give shortcuts a content-addressed icon path. Explorer may keep showing a
+# cached icon when only the executable contents change at a stable path.
+$iconSource = Join-Path $repositoryRoot "Assets\gugu.ico"
+$iconHash = (Get-FileHash -LiteralPath $iconSource -Algorithm SHA256).Hash.Substring(0, 16)
+$shortcutIconName = "GuguPet-icon-$iconHash.ico"
+Copy-Item -LiteralPath $iconSource -Destination (Join-Path $packageDirectory $shortcutIconName) -Force
+
 foreach ($name in @("LICENSE", "ASSET_NOTICE.md", "PRIVACY.md", "SECURITY.md", "UNINSTALL.md", "CODE_SIGNING_POLICY.md", "README.md", "README.en.md", "README.ja.md")) {
     Copy-Item -LiteralPath (Join-Path $repositoryRoot $name) -Destination $packageDirectory -Force
 }

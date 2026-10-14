@@ -13,12 +13,16 @@ public partial class App : System.Windows.Application
     private ControlWindow? _controlWindow;
     private StatusBubbleWindow? _statusBubble;
     private StatusBubbleWindow? _dshStatusBubble;
+    private StatusBubbleWindow? _antigravityStatusBubble;
     private BridgeStateWatcher? _bridge;
     private CodexActivityWatcher? _codexActivity;
     private DshActivityWatcher? _dshActivity;
+    private AntigravityActivityWatcher? _antigravityActivity;
     private MusicPlaybackService? _music;
     private CodexActivityState? _lastCodexActivity;
     private CodexActivityState? _lastDshActivity;
+    private CodexActivityState? _lastAntigravityActivity;
+    private int _antigravityGeneration;
     private TrayIconManager? _tray;
     private StartupPeepholeWindow? _startupPeephole;
     private AppSettings _settings = new();
@@ -62,17 +66,24 @@ public partial class App : System.Windows.Application
             ActivityBubbleEnabled = _settings.ActivityBubbleEnabled,
             DisplaySeconds = _settings.BubbleDisplaySeconds
         };
-        _dshStatusBubble = new StatusBubbleWindow(_petWindow, preferRight: false)
+        _dshStatusBubble = new StatusBubbleWindow(_petWindow, preferRight: false, source: "dsh")
         {
             ActivityBubbleEnabled = _settings.ActivityBubbleEnabled,
             DisplaySeconds = _settings.BubbleDisplaySeconds
         };
+        _antigravityStatusBubble = new StatusBubbleWindow(_petWindow, preferRight: true, source: "antigravity")
+        {
+            ActivityBubbleEnabled = _settings.ActivityBubbleEnabled,
+            DisplaySeconds = _settings.BubbleDisplaySeconds
+        };
+        var bubbles = new[] { _statusBubble, _dshStatusBubble, _antigravityStatusBubble };
+        foreach (var bubble in bubbles) bubble.SetPeers(bubbles);
         _music = new MusicPlaybackService(state => Dispatcher.BeginInvoke(() =>
         {
             _controlWindow?.UpdateMusicState(state);
             _petWindow?.SetMusicPlayback(_settings.MusicSyncEnabled && state.IsPlaying);
         }));
-        _controlWindow = new ControlWindow(_petWindow, _statusBubble, _dshStatusBubble, _music, _settings);
+        _controlWindow = new ControlWindow(_petWindow, bubbles, _music, _settings);
         _petWindow.OpenControlsRequested += (_, _) => _controlWindow.ShowAndActivate();
         _petWindow.NewCodexTaskRequested += (_, _) =>
         {
@@ -92,6 +103,7 @@ public partial class App : System.Windows.Application
         _petWindow.SettingsChanged += (_, _) => QueueSave();
         _statusBubble.ActivityRequested += source => ActivityWindowActivator.Activate(source);
         _dshStatusBubble.ActivityRequested += source => ActivityWindowActivator.Activate(source);
+        _antigravityStatusBubble.ActivityRequested += source => ActivityWindowActivator.Activate(source);
         _controlWindow.ExitRequested += (_, _) => ExitApplication();
         _controlWindow.SettingsChanged += (_, _) => QueueSave();
         _controlWindow.StartupChanged += (_, enabled) => SetStartup(enabled);
@@ -104,6 +116,12 @@ public partial class App : System.Windows.Application
             _settings.MusicSyncEnabled = enabled;
             if (!enabled) _petWindow.SetMusicPlayback(false);
             await _music.SetEnabledAsync(enabled);
+            QueueSave();
+        };
+        _controlWindow.AntigravitySyncChanged += (_, enabled) =>
+        {
+            _settings.AntigravitySyncEnabled = enabled;
+            ConfigureAntigravity();
             QueueSave();
         };
 
@@ -161,6 +179,7 @@ public partial class App : System.Windows.Application
                     PublishMergedActivity();
                 });
             });
+            ConfigureAntigravity();
         }
 
         var showControlAfterStartup = !_demoCapture &&
@@ -190,20 +209,45 @@ public partial class App : System.Windows.Application
     private void PublishMergedActivity()
     {
         if (_petWindow is null || _controlWindow is null || _statusBubble is null || _dshStatusBubble is null) return;
-        var state = ActivityStateMerger.Merge(_lastCodexActivity, _lastDshActivity);
+        var state = ActivityStateMerger.Merge(_lastCodexActivity, _lastDshActivity, _lastAntigravityActivity);
         _controlWindow.UpdateCodexStatus(state);
         if (!_controlWindow.CodexSyncEnabled) return;
 
         _petWindow.SetBaseState(state.State);
         if (state.State == "running")
         {
-            var activeBubble = state.Source.Equals("dsh", StringComparison.OrdinalIgnoreCase)
-                ? _dshStatusBubble
-                : _statusBubble;
+            var activeBubble = state.Source.ToLowerInvariant() switch
+            {
+                "dsh" => _dshStatusBubble,
+                "antigravity" => _antigravityStatusBubble,
+                _ => _statusBubble
+            };
+            if (activeBubble is null || !activeBubble.IsVisible) return;
             _petWindow.AcknowledgeProgress(
                 activeBubble.Left + activeBubble.ActualWidth / 2,
                 activeBubble.Top + activeBubble.ActualHeight / 2);
         }
+    }
+
+    private void ConfigureAntigravity()
+    {
+        var generation = ++_antigravityGeneration;
+        _antigravityActivity?.Dispose();
+        _antigravityActivity = null;
+        _lastAntigravityActivity = null;
+        _antigravityStatusBubble?.Hide();
+        if (_settings.AntigravitySyncEnabled && !_demoCapture)
+            _antigravityActivity = new AntigravityActivityWatcher(AppPaths.AntigravityDataDirectory, state =>
+            {
+                Dispatcher.BeginInvoke(() =>
+                {
+                    if (!_settings.AntigravitySyncEnabled || generation != _antigravityGeneration) return;
+                    _lastAntigravityActivity = state;
+                    if (_petWindow?.IsVisible == true) _antigravityStatusBubble?.UpdateActivity(state);
+                    PublishMergedActivity();
+                });
+            });
+        PublishMergedActivity();
     }
 
     private void StartDemoCaptureSequence()
@@ -234,6 +278,7 @@ public partial class App : System.Windows.Application
 
         _statusBubble.Hide();
         _dshStatusBubble.Hide();
+        _antigravityStatusBubble?.Hide();
         if (_petWindow.IsVisible) _petWindow.Hide();
 
         try
@@ -261,8 +306,10 @@ public partial class App : System.Windows.Application
         if (!_petWindow.IsVisible) _petWindow.Show();
         if (_statusBubble.Owner is null) _statusBubble.Owner = _petWindow;
         if (_dshStatusBubble.Owner is null) _dshStatusBubble.Owner = _petWindow;
+        if (_antigravityStatusBubble is not null && _antigravityStatusBubble.Owner is null) _antigravityStatusBubble.Owner = _petWindow;
         if (_lastCodexActivity is not null) _statusBubble.UpdateActivity(_lastCodexActivity);
         if (_lastDshActivity is not null) _dshStatusBubble.UpdateActivity(_lastDshActivity);
+        if (_lastAntigravityActivity is not null) _antigravityStatusBubble?.UpdateActivity(_lastAntigravityActivity);
         if (showControl) _controlWindow.ShowAndActivate();
         if (playWave) _petWindow.PlayTransient("waving", autoClear: true);
     }
@@ -270,7 +317,8 @@ public partial class App : System.Windows.Application
     private void ScheduleBubblePreview(string requestedState)
     {
         if (_statusBubble is null || _dshStatusBubble is null) return;
-        var previewBoth = requestedState.Equals("both", StringComparison.OrdinalIgnoreCase);
+        var previewAll = requestedState.Equals("all", StringComparison.OrdinalIgnoreCase);
+        var previewBoth = previewAll || requestedState.Equals("both", StringComparison.OrdinalIgnoreCase);
         var state = requestedState.ToLowerInvariant() switch
         {
             "waiting" => "waiting",
@@ -321,6 +369,15 @@ public partial class App : System.Windows.Application
                 dshTask.ThreadId,
                 new[] { dshTask },
                 "dsh"));
+            if (previewAll && _antigravityStatusBubble is not null)
+            {
+                _antigravityStatusBubble.ActivityBubbleEnabled = true;
+                _antigravityStatusBubble.DisplaySeconds = 30;
+                var agTask = new CodexTaskSummary("antigravity-ui-preview", "Antigravity", "running",
+                    LocalizationService.T("运行中"), LocalizationService.T("Antigravity 正在处理任务"), DateTimeOffset.Now, "antigravity");
+                _antigravityStatusBubble.UpdateActivity(new CodexActivityState("running", agTask.Message,
+                    agTask.UpdatedAt, agTask.ThreadId, new[] { agTask }, "antigravity"));
+            }
         };
         timer.Start();
     }
@@ -545,6 +602,7 @@ public partial class App : System.Windows.Application
         _settings.EdgeActionsEnabled = _petWindow.EdgeActionsEnabled;
         _settings.MusicSyncEnabled = _controlWindow.MusicSyncEnabled;
         _settings.CodexSyncEnabled = _controlWindow.CodexSyncEnabled;
+        _settings.AntigravitySyncEnabled = _controlWindow.AntigravitySyncEnabled;
         _settings.ActivityBubbleEnabled = _statusBubble.ActivityBubbleEnabled;
         _settings.BubbleDisplaySeconds = _statusBubble.DisplaySeconds;
         _settings.StartupAnimationEnabled = _controlWindow.StartupAnimationEnabled;
@@ -567,11 +625,13 @@ public partial class App : System.Windows.Application
         _bridge?.Dispose();
         _codexActivity?.Dispose();
         _dshActivity?.Dispose();
+        _antigravityActivity?.Dispose();
         _music?.Dispose();
         _tray?.Dispose();
         _controlWindow?.ForceClose();
         _statusBubble?.Close();
         _dshStatusBubble?.Close();
+        _antigravityStatusBubble?.Close();
         _petWindow?.Close();
         _singleInstance?.ReleaseMutex();
         _singleInstance?.Dispose();

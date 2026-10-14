@@ -35,6 +35,7 @@ try
     var running = idle with { State = "running", ThreadId = "b", Source = "dsh" };
     if (ActivityStateMerger.Merge(idle, running).State != "running") throw new Exception("Other active task was interrupted");
     Console.WriteLine("PASS other-active-source");
+    await AntigravityTests.Run(directory, args.Contains("--antigravity-live"));
 
     var interruptedAnimation = AnimationCatalog.GetSequence("interrupted", reducedMotion: false);
     if (interruptedAnimation.LoopStartIndex != 8 || interruptedAnimation.Frames[0].Row != 19 ||

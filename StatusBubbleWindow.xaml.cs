@@ -9,6 +9,9 @@ public partial class StatusBubbleWindow : Window
 {
     private readonly PetWindow _pet;
     private readonly bool _preferRight;
+    private readonly string _source;
+    private IReadOnlyList<StatusBubbleWindow>? _peers;
+    private bool _layoutPending;
     private readonly DispatcherTimer _hideTimer;
     private bool _activityBubbleEnabled = true;
     private double _displaySeconds = 10;
@@ -18,25 +21,31 @@ public partial class StatusBubbleWindow : Window
 
     public event Action<string>? ActivityRequested;
 
-    public StatusBubbleWindow(PetWindow pet, bool preferRight = true)
+    public StatusBubbleWindow(PetWindow pet, bool preferRight = true, string source = "codex")
     {
         _pet = pet;
         _preferRight = preferRight;
+        _source = source;
         InitializeComponent();
         LocalizationService.Apply(this);
-        Title = preferRight ? "GuguPet Codex Progress" : "GuguPet DSH Progress";
-        var dshWaveVisibility = preferRight ? Visibility.Collapsed : Visibility.Visible;
+        Title = $"GuguPet {ActivitySources.Label(source)} Progress";
+        var isDsh = source.Equals("dsh", StringComparison.OrdinalIgnoreCase);
+        var isAntigravity = source.Equals("antigravity", StringComparison.OrdinalIgnoreCase);
+        var dshWaveVisibility = isDsh ? Visibility.Visible : Visibility.Collapsed;
         DshWaveTop.Visibility = dshWaveVisibility;
         DshWaveBottom.Visibility = dshWaveVisibility;
         DshWaveRight.Visibility = dshWaveVisibility;
-        var codexBorderVisibility = preferRight ? Visibility.Visible : Visibility.Collapsed;
+        var codexBorderVisibility = !isDsh && !isAntigravity ? Visibility.Visible : Visibility.Collapsed;
         CodexBorderTop.Visibility = codexBorderVisibility;
         CodexBorderBottom.Visibility = codexBorderVisibility;
         CodexBorderRight.Visibility = codexBorderVisibility;
-        CodexSourceIcon.Visibility = preferRight ? Visibility.Visible : Visibility.Collapsed;
-        DshSourceIcon.Visibility = preferRight ? Visibility.Collapsed : Visibility.Visible;
+        CodexSourceIcon.Visibility = !isDsh && !isAntigravity ? Visibility.Visible : Visibility.Collapsed;
+        DshSourceIcon.Visibility = isDsh ? Visibility.Visible : Visibility.Collapsed;
+        AntigravitySourceIcon.Visibility = isAntigravity ? Visibility.Visible : Visibility.Collapsed;
         _pet.LocationChanged += (_, _) => FollowPet();
         _pet.SizeChanged += (_, _) => FollowPet();
+        SizeChanged += (_, _) => ScheduleLayout();
+        IsVisibleChanged += (_, _) => ScheduleLayout();
         _hideTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(_displaySeconds) };
         _hideTimer.Tick += (_, _) =>
         {
@@ -45,13 +54,29 @@ public partial class StatusBubbleWindow : Window
         };
     }
 
+    public void SetPeers(IReadOnlyList<StatusBubbleWindow> peers) => _peers = peers;
+
+    private void ScheduleLayout()
+    {
+        if (_layoutPending) return;
+        _layoutPending = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            _layoutPending = false;
+            FollowPet();
+        }));
+    }
+
     public bool ActivityBubbleEnabled
     {
         get => _activityBubbleEnabled;
         set
         {
+            if (_activityBubbleEnabled == value) return;
             _activityBubbleEnabled = value;
+            _lastSignature = null;
             if (!value) Hide();
+            else if (_activity is not null) UpdateActivity(_activity);
         }
     }
 
@@ -65,6 +90,8 @@ public partial class StatusBubbleWindow : Window
     {
         if (!_activityBubbleEnabled || activity.State == "idle")
         {
+            _activity = activity;
+            _lastSignature = null;
             if (activity.State == "idle") Hide();
             return;
         }
@@ -159,6 +186,11 @@ public partial class StatusBubbleWindow : Window
     private void FollowPet()
     {
         if (!IsVisible && !IsLoaded) return;
+        if (_peers is not null)
+        {
+            ArrangePeers();
+            return;
+        }
         var area = _pet.CurrentDisplayWorkArea;
         var right = _pet.Left + _pet.ActualWidth + 10;
         var left = _pet.Left - ActualWidth - 10;
@@ -174,6 +206,44 @@ public partial class StatusBubbleWindow : Window
         if (!preferredFits && desiredTop + ActualHeight > area.Bottom)
             desiredTop = baseTop - ActualHeight - 8;
         Top = Math.Clamp(desiredTop, area.Top, Math.Max(area.Top, area.Bottom - ActualHeight));
+    }
+
+    private void ArrangePeers()
+    {
+        var area = _pet.CurrentDisplayWorkArea;
+        var pet = new Rect(_pet.Left, _pet.Top, _pet.ActualWidth, _pet.ActualHeight);
+        var placed = new List<Rect>();
+        foreach (var bubble in _peers!.Where(peer => peer.IsVisible))
+        {
+            var width = bubble.ActualWidth > 0 ? bubble.ActualWidth : bubble.Width;
+            var height = bubble.ActualHeight > 0 ? bubble.ActualHeight : 180;
+            var right = pet.Right + 10;
+            var left = pet.Left - width - 10;
+            var xs = bubble._preferRight ? new[] { right, left } : new[] { left, right };
+            var ys = new[] { pet.Top + 18 }
+                .Concat(placed.Select(rect => rect.Bottom + 8))
+                .Concat(placed.Select(rect => rect.Top - height - 8))
+                .Concat(new[] { pet.Top - height - 8, area.Top, area.Bottom - height });
+            var candidates = xs.SelectMany((x, side) => ys.Select(y =>
+            {
+                var rect = new Rect(
+                    Math.Clamp(x, area.Left, Math.Max(area.Left, area.Right - width)),
+                    Math.Clamp(y, area.Top, Math.Max(area.Top, area.Bottom - height)), width, height);
+                var overlap = placed.Sum(other => Overlap(rect, other));
+                var score = overlap * 1000 + Overlap(rect, pet) * 1000 + side * 100 + Math.Abs(rect.Top - pet.Top - 18);
+                return (rect, score);
+            }));
+            var best = candidates.OrderBy(candidate => candidate.score).First().rect;
+            bubble.Left = best.Left;
+            bubble.Top = best.Top;
+            placed.Add(best);
+        }
+    }
+
+    private static double Overlap(Rect first, Rect second)
+    {
+        first.Intersect(second);
+        return first.IsEmpty ? 0 : first.Width * first.Height;
     }
 
     private void Bubble_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -208,7 +278,7 @@ public partial class StatusBubbleWindow : Window
 
     private string SelectedSource()
     {
-        if (_activity is null) return _preferRight ? "codex" : "dsh";
+        if (_activity is null) return _source;
         return _activity.Tasks.Count > 0
             ? _activity.Tasks[Math.Clamp(_taskIndex, 0, _activity.Tasks.Count - 1)].Source
             : _activity.Source;

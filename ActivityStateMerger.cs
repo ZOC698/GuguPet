@@ -4,11 +4,9 @@ public static class ActivityStateMerger
 {
     private const int MaxTasks = 8;
 
-    public static CodexActivityState Merge(
-        CodexActivityState? codex,
-        CodexActivityState? dsh)
+    public static CodexActivityState Merge(params CodexActivityState?[] sources)
     {
-        var tasks = new[] { codex, dsh }
+        var tasks = sources
             .Where(state => state is not null)
             .SelectMany(state => state!.Tasks)
             .GroupBy(task => $"{task.Source}:{task.ThreadId}", StringComparer.OrdinalIgnoreCase)
@@ -21,7 +19,7 @@ public static class ActivityStateMerger
         // Each watcher has already selected its current actionable state.
         // Historical task rows may still contain a recently completed item,
         // so they must never drive the pet after that source has settled idle.
-        var focus = new[] { codex, dsh }
+        var focus = sources
             .Where(state => state is not null)
             .Select(state => state!)
             .OrderBy(state => StatePriority(state.State))

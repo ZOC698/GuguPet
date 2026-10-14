@@ -21,6 +21,17 @@ decode the compressed session store, submit
 prompts, answer requests, or send these values to an external server. Codex and
 DSH progress bubbles are kept separate and open only their matching local app.
 
+When Antigravity integration is enabled, GuguPet opens its local
+`%USERPROFILE%\.gemini\antigravity\conversation_summaries.db` in read-only mode
+and reads the public `content` of model replies from the conversation's
+`brain\<id>\.system_generated\logs\transcript.jsonl`. It ignores `thinking`,
+system messages, tool arguments/results, credentials, raw protobuf payloads,
+and subagent conversations. Filesystem changes and local process-exit events
+drive updates; no periodic idle scanning, Hook registration, prompt submission,
+or network request is needed. These messages are displayed locally and are
+not copied to GuguPet storage or uploaded. The control panel can disable this
+integration independently. Clicking an Antigravity bubble opens only Antigravity.
+
 When music sync is enabled, GuguPet subscribes to the Windows Global System
 Media Transport Controls session selected by the operating system. It reads
 playback state and the title, artist, source application, and control

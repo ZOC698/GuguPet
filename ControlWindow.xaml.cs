@@ -23,7 +23,9 @@ public partial class ControlWindow : Window
     public event EventHandler? CheckUpdateRequested;
     public event EventHandler? PreviewStartupRequested;
     public event EventHandler<bool>? MusicSyncChanged;
+    public event EventHandler<bool>? AntigravitySyncChanged;
     public bool CodexSyncEnabled => CodexSyncCheck.IsChecked == true;
+    public bool AntigravitySyncEnabled => AntigravitySyncCheck.IsChecked == true;
     public bool StartupAnimationEnabled => StartupAnimationCheck.IsChecked == true;
     public bool ShowControlPanelOnLaunch => ShowControlOnLaunchCheck.IsChecked == true;
     public bool AutoUpdateEnabled => AutoUpdateCheck.IsChecked == true;
@@ -32,13 +34,12 @@ public partial class ControlWindow : Window
 
     public ControlWindow(
         PetWindow pet,
-        StatusBubbleWindow codexBubble,
-        StatusBubbleWindow dshBubble,
+        StatusBubbleWindow[] bubbles,
         MusicPlaybackService music,
         AppSettings settings)
     {
         _pet = pet;
-        _bubbles = new[] { codexBubble, dshBubble };
+        _bubbles = bubbles;
         _music = music;
         _loading = true;
         InitializeComponent();
@@ -77,6 +78,7 @@ public partial class ControlWindow : Window
         EdgeActionsCheck.IsChecked = settings.EdgeActionsEnabled;
         MusicSyncCheck.IsChecked = settings.MusicSyncEnabled;
         CodexSyncCheck.IsChecked = settings.CodexSyncEnabled;
+        AntigravitySyncCheck.IsChecked = settings.AntigravitySyncEnabled;
         ActivityBubbleCheck.IsChecked = settings.ActivityBubbleEnabled;
         BubbleDurationSlider.Value = settings.BubbleDisplaySeconds;
         StartupCheck.IsChecked = settings.StartWithWindows;
@@ -404,6 +406,12 @@ public partial class ControlWindow : Window
         CodexWindowActivator.ActivateOrLaunch();
 
     private void CodexSyncCheck_OnChanged(object sender, RoutedEventArgs e) => NotifySettingsChanged();
+
+    private void AntigravitySyncCheck_OnChanged(object sender, RoutedEventArgs e)
+    {
+        if (IsInitialized && !_loading)
+            AntigravitySyncChanged?.Invoke(this, AntigravitySyncEnabled);
+    }
 
     private void NotifySettingsChanged()
     {

@@ -373,16 +373,18 @@
                                 <DockPanel Margin="0,0,0,9">
                                     <StackPanel Orientation="Horizontal">
                                         <Ellipse Width="10" Height="10" Fill="{StaticResource Cyan}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                        <TextBlock Text="Codex / DSH 状态" Style="{StaticResource SectionTitle}" Margin="0" />
+                                        <TextBlock Text="AI 助手状态" Style="{StaticResource SectionTitle}" Margin="0" />
                                     </StackPanel>
                                     <CheckBox x:Name="CodexSyncCheck" Content="自动同步" IsChecked="True" FontWeight="SemiBold" DockPanel.Dock="Right"
                                               Checked="CodexSyncCheck_OnChanged" Unchecked="CodexSyncCheck_OnChanged" />
                                 </DockPanel>
                                 <Border Background="#F0FAFB" BorderBrush="#C5E8EC" BorderThickness="1" CornerRadius="10" Padding="11">
-                                    <TextBlock x:Name="CodexStatus" Text="正在连接 Codex / DSH 状态" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="CodexStatus" Text="正在连接 AI 助手状态" TextWrapping="Wrap" />
                                 </Border>
-                                <CheckBox x:Name="ActivityBubbleCheck" Content="在咕嘎旁分别显示 Codex / DSH 实时进度气泡" IsChecked="True"
+                                <CheckBox x:Name="ActivityBubbleCheck" Content="分别显示各个 AI 助手的实时进度气泡" IsChecked="True"
                                           Checked="ActivityBubbleCheck_OnChanged" Unchecked="ActivityBubbleCheck_OnChanged" Margin="0,11,0,0" />
+                                <CheckBox x:Name="AntigravitySyncCheck" Content="显示 Antigravity 消息" IsChecked="True" Margin="0,8,0,0"
+                                          Checked="AntigravitySyncCheck_OnChanged" Unchecked="AntigravitySyncCheck_OnChanged" />
                                 <Grid Margin="27,7,0,10">
                                     <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="70" /></Grid.ColumnDefinitions>
                                     <Slider x:Name="BubbleDurationSlider" Minimum="3" Maximum="30" Value="10" TickFrequency="1"

@@ -133,6 +133,11 @@
                                              VerticalAlignment="Top" Margin="0,4,4,0" />
                                 </Grid>
                             </Border>
+                            <Border x:Name="AntigravitySourceIcon" Background="#251D42" BorderBrush="#9B7DEA"
+                                    BorderThickness="1" CornerRadius="7" Visibility="Collapsed">
+                                <TextBlock Text="AG" Foreground="#F5F0FF" FontSize="10" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
                         </Grid>
                     </Grid>
 

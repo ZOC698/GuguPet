@@ -37,6 +37,7 @@ The current release is not yet Authenticode-signed. Windows SmartScreen may disp
 - Safe progress summaries extracted from public `agent_message` events and shown in temporary bubbles beside Gugu
 - The control panel combines the status, title, and public progress of up to eight Codex / DSH tasks without reading or displaying internal reasoning
 - Codex and DSH have separate progress bubbles that can be visible simultaneously; clicking either bubble returns to its matching application
+- Antigravity has its own message bubble with a purple AG badge. All three can be shown together, and clicking returns to Antigravity. Disable this integration independently with “Show Antigravity messages” in the panel
 - Clicking a live progress bubble restores and activates the Codex window; if Codex is not running, GuguPet attempts to launch it from the Start menu
 - Right-click to open the instant control panel
 - Adjustable size, opacity, movement speed, always-on-top mode, and reduced motion
@@ -57,6 +58,8 @@ The current release is not yet Authenticode-signed. Windows SmartScreen may disp
 - Gugu's context menu keeps the common “New Codex task,” “Open DSH,” “Feed cookie,” and “Open control panel” actions
 
 ## State bridge
+
+Antigravity integration reads `%USERPROFILE%\.gemini\antigravity\conversation_summaries.db` and `brain\<conversationID>\.system_generated\logs\transcript.jsonl` in read-only mode. Windows filesystem events and application-exit events drive updates, with no periodic idle scans. Only public model reply content is displayed; `thinking`, system messages, and tool results are ignored. A live task has no fixed running timeout. Completion and interruption reactions settle automatically. The integration uses Windows' built-in SQLite and requires no Hook, plugin, or extra runtime.
 
 “Auto sync” is enabled by default in the control panel. When Codex or DSH begins a task, Gugu switches to `running`; when input or approval is requested, to `waiting`; after completion, briefly to `review`; and on an explicit error, to `failed`. Codex integration reads session logs only. DSH integration connects only to `session.list` and two downlink event streams on the local loopback interface; it does not submit prompts, answer requests, read DSH credentials, or decode compressed logs. Neither integration reads or displays internal reasoning.
 

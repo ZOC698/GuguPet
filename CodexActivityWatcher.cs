@@ -14,7 +14,7 @@ public sealed record CodexTaskSummary(
     DateTimeOffset UpdatedAt,
     string Source = "codex")
 {
-    public string SourceLabel => Source.Equals("dsh", StringComparison.OrdinalIgnoreCase) ? "DSH" : "Codex";
+    public string SourceLabel => ActivitySources.Label(Source);
 }
 
 public sealed record CodexActivityState(
@@ -25,7 +25,17 @@ public sealed record CodexActivityState(
     IReadOnlyList<CodexTaskSummary> Tasks,
     string Source = "codex")
 {
-    public string SourceLabel => Source.Equals("dsh", StringComparison.OrdinalIgnoreCase) ? "DSH" : "Codex";
+    public string SourceLabel => ActivitySources.Label(Source);
+}
+
+public static class ActivitySources
+{
+    public static string Label(string? source) => source?.ToLowerInvariant() switch
+    {
+        "dsh" => "DSH",
+        "antigravity" => "Antigravity",
+        _ => "Codex"
+    };
 }
 
 public sealed class CodexActivityWatcher : IDisposable

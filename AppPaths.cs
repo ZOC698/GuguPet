@@ -22,4 +22,7 @@ public static class AppPaths
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
         ".codex",
         "sessions");
+
+    public static string AntigravityDataDirectory { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".gemini", "antigravity");
 }

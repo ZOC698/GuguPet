@@ -19,6 +19,7 @@ public sealed class AppSettings
     public bool EdgeActionsEnabled { get; set; } = true;
     public bool MusicSyncEnabled { get; set; }
     public bool CodexSyncEnabled { get; set; } = true;
+    public bool AntigravitySyncEnabled { get; set; } = true;
     public bool ActivityBubbleEnabled { get; set; } = true;
     public double BubbleDisplaySeconds { get; set; } = 10;
     public bool StartWithWindows { get; set; }

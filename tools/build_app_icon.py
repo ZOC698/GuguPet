@@ -6,7 +6,7 @@ from PIL import Image, ImageChops, ImageFilter
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "Assets" / "gugu-icon-cutout.png"
+SOURCE = ROOT / "Assets" / "gugu-icon-head-collar-source.png"
 PNG_OUTPUT = ROOT / "Assets" / "gugu-icon.png"
 ICO_OUTPUT = ROOT / "Assets" / "gugu.ico"
 PREVIEW_OUTPUT = ROOT.parent / "work" / "gugu-idle-animation-qa" / "gugu-app-icon-preview.png"
@@ -15,14 +15,17 @@ PREVIEW_OUTPUT = ROOT.parent / "work" / "gugu-idle-animation-qa" / "gugu-app-ico
 def main() -> None:
     source = Image.open(SOURCE).convert("RGBA")
 
-    # Identity-preserving head crop from the canonical front pose. It keeps the
-    # penguin hood eyes and beak, Gugu's face, blue hair clip, and collar.
-    portrait = source.crop((215, 30, 990, 805))
+    # The source is already a transparent head-and-collar cutout. Trim only
+    # its transparent canvas so no torso or shoulders enter the app icon.
+    bounds = source.getbbox()
+    if bounds is None:
+        raise RuntimeError("head-only icon source is empty")
+    portrait = source.crop(bounds)
     portrait.thumbnail((900, 900), Image.Resampling.LANCZOS)
 
     icon = Image.new("RGBA", (1024, 1024), (0, 0, 0, 0))
     x = (icon.width - portrait.width) // 2
-    y = (icon.height - portrait.height) // 2 + 18
+    y = (icon.height - portrait.height) // 2
 
     subject_alpha = Image.new("L", icon.size, 0)
     subject_alpha.paste(portrait.getchannel("A"), (x, y))

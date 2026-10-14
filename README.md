@@ -37,6 +37,7 @@
 - 从公开的 `agent_message` 事件提取安全进度摘要，在咕嘎旁显示临时气泡
 - 控制台合并显示最多 8 个 Codex / DSH 任务的状态、标题与公开进度，不读取或展示内部推理
 - Codex 与 DSH 使用两个可同时出现的独立气泡；点击哪个气泡就返回对应应用
+- 支持 Antigravity 独立消息气泡（紫色 AG 标记），可与 Codex、DSH 同时显示；点击可返回 Antigravity。控制台的“显示 Antigravity 消息”可独立关闭此集成
 - 点击实时进度气泡会恢复并唤起 Codex 主窗口；Codex 未运行时尝试从开始菜单启动
 - 右键打开即时控制面板
 - 尺寸、透明度、速度、置顶和减少动态效果调节
@@ -57,6 +58,8 @@
 - 咕嘎右键菜单保留“新建 Codex 任务”“打开 DSH”“投喂饼干”和“打开控制台”等常用入口
 
 ## 状态桥接
+
+Antigravity 集成只读访问 `%USERPROFILE%\.gemini\antigravity\conversation_summaries.db` 和 `brain\<会话ID>\.system_generated\logs\transcript.jsonl`。它用 Windows 文件变更事件和应用退出事件更新状态，空闲时不定时扫描；仅显示公开的模型回复正文，忽略 `thinking`、系统消息与工具结果。任务仍在运行时不会因固定超时恢复待机，完成和中止反应会短暂显示后自动结束。此集成使用 Windows 内置 SQLite，不需要安装 Hook、插件或额外运行时。
 
 控制台中的“自动同步”默认开启。Codex 或 DSH 开始任务时切换为 `running`，请求输入/批准时切换为 `waiting`，完成后短暂切换为 `review`，明确错误切换为 `failed`。Codex 集成只读访问会话日志；DSH 集成只连接本机回环地址上的 `session.list` 与两个下行事件流，不提交提示词或回答，也不读取 DSH 凭据和压缩日志。两者都不读取或展示内部推理。
 

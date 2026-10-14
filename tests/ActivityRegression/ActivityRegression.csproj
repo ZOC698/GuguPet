@@ -8,6 +8,7 @@
   <ItemGroup>
     <Compile Include="../../CodexActivityWatcher.cs" Link="CodexActivityWatcher.cs" />
     <Compile Include="../../ActivityStateMerger.cs" Link="ActivityStateMerger.cs" />
+    <Compile Include="../../AntigravityActivityWatcher.cs" Link="AntigravityActivityWatcher.cs" />
     <Compile Include="../../AnimationCatalog.cs" Link="AnimationCatalog.cs" />
     <Compile Include="../../MusicPlaybackService.cs" Link="MusicPlaybackService.cs" />
   </ItemGroup>

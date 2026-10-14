@@ -158,12 +158,24 @@ if ($petWasRunning) {
 
 $desktop = [Environment]::GetFolderPath([Environment+SpecialFolder]::DesktopDirectory)
 $shortcutPath = Join-Path $desktop "咕嘎桌宠.lnk"
+$iconSource = Join-Path $repositoryRoot "Assets\gugu.ico"
+$iconHash = (Get-FileHash -LiteralPath $iconSource -Algorithm SHA256).Hash.Substring(0, 16)
+$shortcutIcon = Join-Path $installRoot "GuguPet-icon-$iconHash.ico"
+if (-not (Test-Path -LiteralPath $shortcutIcon)) {
+    throw "The freshly installed shortcut icon is missing: $shortcutIcon"
+}
 $shell = New-Object -ComObject WScript.Shell
 $shortcut = $shell.CreateShortcut($shortcutPath)
 $shortcut.TargetPath = $petExecutable
 $shortcut.WorkingDirectory = $installRoot
-$shortcut.IconLocation = "$petExecutable,0"
+$shortcut.IconLocation = "$shortcutIcon,0"
 $shortcut.Save()
+
+Add-Type -Namespace GuguPetShell -Name NativeMethods -MemberDefinition @'
+[System.Runtime.InteropServices.DllImport("shell32.dll")]
+public static extern void SHChangeNotify(uint eventId, uint flags, System.IntPtr item1, System.IntPtr item2);
+'@
+[GuguPetShell.NativeMethods]::SHChangeNotify(0x08000000, 0, [IntPtr]::Zero, [IntPtr]::Zero)
 
 $watcherHash = (Get-FileHash -LiteralPath $watcherExecutable -Algorithm SHA256).Hash
 $updaterHash = (Get-FileHash -LiteralPath (Join-Path $installRoot "GuguPet.Updater.exe") -Algorithm SHA256).Hash
@@ -175,3 +187,4 @@ if ($watcherEnabled) { Write-Host "Stable launch watcher: $stableWatcherExecutab
 Write-Host "Historical launch watchers removed: $legacyWatchersRemoved"
 Write-Host "Updater SHA-256: $updaterHash"
 Write-Host "Desktop shortcut: $shortcutPath"
+Write-Host "Desktop shortcut icon: $shortcutIcon"
